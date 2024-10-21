@@ -1,7 +1,15 @@
 /**
  * @module models/twoScaleModel
  * @description Implements the Two-Scale Population Model using He-Laplace Method and Fractional Complex Transform.
- * @since 1.0.1
+ * @since 1.0.2
+ * 
+ * This model implements the Two-Scale Population Model using the He-Laplace Method and Fractional Complex Transform. It achieves its intent by:
+ * - Defining the fractional differential equation using He's fractional derivative
+ * - Applying the He-Laplace Method to solve the ODE
+ * - Generating data points from the solution
+ * 
+ * The implementation is suitable for solving the two-scale population model with fractional derivatives,
+ * providing a robust approach to modeling complex population dynamics.
  */
 
 const { hesFractionalDerivative } = require('../solvers/hesFractionalDerivative');

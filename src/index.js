@@ -32,3 +32,6 @@ const { reverseEngineer } = require('./utils/reverseEngineering');
     console.error('An error occurred:', error);
   }
 })();
+
+// Start the web server
+require('./server');

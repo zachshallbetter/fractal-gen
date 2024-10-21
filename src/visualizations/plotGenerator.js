@@ -1,43 +1,51 @@
 /**
  * @module visualizations/plotGenerator
- * @description Generates interactive plots using Plotly.js.
- * @since 1.0.3
+ * @description Generates plots using the Canvas API.
+ * @since 1.0.6
  */
 
-const Plotly = require('plotly.js-dist');
+const { createCanvas } = require('canvas');
 const fs = require('fs');
 const path = require('path');
 
 async function createInteractivePlot(data) {
-  const trace = {
-    x: data.map(point => point.x),
-    y: data.map(point => point.y),
-    mode: 'lines',
-    type: 'scatter',
-    line: { color: '#17BECF' },
-  };
+  const width = 800; // Width of the image
+  const height = 600; // Height of the image
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
 
-  const layout = {
-    title: 'Fractal Visualization',
-    xaxis: { title: 'Time' },
-    yaxis: { title: 'Value' },
-  };
+  // Draw background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
 
-  const imgOpts = {
-    format: 'png',
-    width: 800,
-    height: 600,
-  };
+  // Scale data
+  const maxX = Math.max(...data.map(point => point.x));
+  const maxY = Math.max(...data.map(point => point.y));
+  const minY = Math.min(...data.map(point => point.y));
 
-  const graphOptions = { layout: layout, filename: 'fractal-plot', fileopt: 'overwrite' };
+  // Draw fractal data points
+  ctx.strokeStyle = '#17BECF';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
 
-  // Generate the plot
-  const plotData = [trace];
-  const plotHtml = Plotly.newPlot('plot', plotData, layout).then(() => {
-    Plotly.toImage('plot', imgOpts).then((imgData) => {
-      fs.writeFileSync(path.join('plots', 'fractalPlot.png'), imgData.replace(/^data:image\/\w+;base64,/, ""), 'base64');
-    });
+  data.forEach((point, index) => {
+    const x = (point.x / maxX) * width;
+    const y = height - ((point.y - minY) / (maxY - minY)) * height;
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
   });
+
+  ctx.stroke();
+
+  // Save image
+  const imagePath = path.join('plots', 'fractalPlot.png');
+  const buffer = canvas.toBuffer('image/png');
+  fs.writeFileSync(imagePath, buffer);
+
+  console.log(`Plot image saved to ${imagePath}.`);
 }
 
 module.exports = { createInteractivePlot };

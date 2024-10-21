@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Fractal Generator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Interactive Fractal Generator</h1>
+  <div class="controls">
+    <label for="alpha">Alpha (α): <span id="alphaValue">0.9</span></label>
+    <input type="range" id="alpha" min="0.1" max="1" step="0.01" value="0.9">
+
+    <label for="beta">Beta (β): <span id="betaValue">0.9</span></label>
+    <input type="range" id="beta" min="0.1" max="1" step="0.01" value="0.9">
+
+    <label for="maxTerms">Max Terms: <span id="maxTermsValue">10</span></label>
+    <input type="range" id="maxTerms" min="1" max="50" step="1" value="10">
+  </div>
+  <canvas id="fractalCanvas" width="800" height="600"></canvas>
+  <script src="script.js"></script>
+</body>
+</html>

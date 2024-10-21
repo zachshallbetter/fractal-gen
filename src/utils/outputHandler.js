@@ -20,7 +20,7 @@ async function outputResults(data, params) {
 
   // Generate visualizations
   await createInteractivePlot(data);
-  createFractalImage(data);
+  await createFractalImage(data);
 }
 
 module.exports = { outputResults };

@@ -4,6 +4,11 @@
  * @since 1.0.1
  */
 
+/**
+ * Solves a fractal–fractional differential equation using Lagrangian polynomial interpolation.
+ * @param {Object} params - The parameters parsed from user inputs.
+ * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
+ */
 async function fractalFractionalSolver(params) {
   const { alpha, gamma, kernel, initialCondition, N, T } = params;
 

@@ -1,12 +1,16 @@
 /**
  * @module models/fractionalSineGordonModel
- * @description Implements the Fractional Order Sine-Gordon Equation using the Laplace-Adomian Decomposition Method (LADM) or Shehu Transform-Adomian Decomposition Method (STADM).
- * Optimized for non-blocking, asynchronous execution to prevent blocking in edge environments.
- * @since 1.0.3
+ * @description Implements the Fractional Order Sine-Gordon Equation using a simplified numerical method.
+ * Optimized for non-blocking execution.
+ * @since 1.0.6
+ * 
+ * This model implements the Fractional Order Sine-Gordon Equation using a simplified numerical method. It achieves its intent by:
+ * - Using the LADM (Laplace Adomian Decomposition Method) solver
+ * - Generating data points for visualization
+ * - Optimizing for non-blocking execution
  */
 
 const { ladmSolver } = require('../solvers/ladmSolver');
-const { stadmSolver } = require('../solvers/stadmSolver');
 
 /**
  * Solves the fractional Sine-Gordon equation using the selected method.
@@ -14,37 +18,15 @@ const { stadmSolver } = require('../solvers/stadmSolver');
  * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
  */
 async function solve(params) {
-  let solution;
+  const solution = await ladmSolver(params);
 
-  if (params.method === 'LADM') {
-    solution = await ladmSolver(params);
-  } else if (params.method === 'STADM') {
-    solution = await stadmSolver(params);
-  } else {
-    throw new Error('Invalid method selected. Choose either "LADM" or "STADM".');
-  }
-
-  // Generate data points for visualization asynchronously
-  const data = await generateDataPointsAsync(solution, params);
-
-  return data;
-}
-
-/**
- * Generates data points asynchronously to prevent blocking.
- * @param {Function} solution - The solution function u(t).
- * @param {Object} params - Parameters including time steps and end time.
- * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points.
- */
-async function generateDataPointsAsync(solution, params) {
+  // Generate data points for visualization
   const data = [];
-  const { timeSteps, timeEnd } = params;
-  const dt = timeEnd / timeSteps;
-
-  for (let i = 0; i <= timeSteps; i++) {
+  const dt = params.timeEnd / params.timeSteps;
+  for (let i = 0; i <= params.timeSteps; i++) {
     const t = i * dt;
-    // Use Promise.resolve to simulate async operation
-    data.push({ x: t, y: await Promise.resolve(solution(t)) });
+    const y = solution(t);
+    data.push({ x: t, y: y });
   }
 
   return data;

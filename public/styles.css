@@ -1,0 +1,24 @@
+/* Fractal Generator Interface Styles
+   @module FractalGeneratorStyles
+   @since 1.0.0
+*/
+
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background-color: #000;
+  color: #fff;
+}
+
+.controls {
+  margin: 20px;
+}
+
+label {
+  display: block;
+  margin: 10px;
+}
+
+input[type="range"] {
+  width: 300px;
+}

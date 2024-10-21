@@ -2,12 +2,24 @@
  * @module models/advectionDiffusionReactionModel
  * @description Implements the fractal–fractional ADR equation using Bernstein polynomials and operational matrices.
  * @since 1.0.1
+ * 
+ * This model implements the fractal-fractional Advection-Diffusion-Reaction (ADR) equation using Bernstein polynomials and operational matrices. It appears to achieve its intent by:
+ * - Using Bernstein polynomials for time and space discretization
+ * - Generating operational matrices for fractional derivatives
+ * - Employing the MHPM (Modified Homotopy Perturbation Method) solver
+ * - Returning a solution as data points
  */
 
 const { bernsteinPolynomials } = require('../solvers/bernsteinPolynomials');
 const { generateOperationalMatrices } = require('../solvers/operationalMatrices');
 const { mhpmSolver } = require('../solvers/mhpmSolver');
 
+
+/**
+ * Solves the ADR equation using Bernstein polynomials and operational matrices.
+ * @param {Object} params - The parameters parsed from user inputs.
+ * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
+ */
 async function solve(params) {
   // Problem-specific parameters
   const n = params.polynomialDegree || 5;

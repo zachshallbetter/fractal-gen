@@ -2,6 +2,13 @@
  * @module visualizations/imageGenerator
  * @description Creates static images of the fractal data using the Canvas API.
  * @since 1.0.1
+ * 
+ * This module generates static images of fractal data using the Canvas API. It achieves its intent by:
+ * - Creating a canvas with specified dimensions
+ * - Drawing the background in black
+ * - Scaling the data points based on their maximum values
+ * - Drawing the fractal data points on the canvas
+ * - Saving the generated image as a PNG file
  */
 
 const { createCanvas } = require('canvas');

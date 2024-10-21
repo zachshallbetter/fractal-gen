@@ -12,24 +12,10 @@ A Node.js application for generating fractals using advanced mathematical models
 - **Shehu Transform-Adomian Decomposition Method (STADM)**
 - **Fractional Order Sine-Gordon Equation Implementation**
 
-## Understanding the Concepts
+## Visualization
 
-### Laplace-Adomian Decomposition Method (LADM)
-
-- **Laplace Transform:** An integral transform that converts differential equations into algebraic equations in the Laplace domain, simplifying their solution.
-- **Adomian Decomposition Method (ADM):** Decomposes nonlinear differential equations into a series of solvable linear equations.
-- **Combination (LADM):** By applying the Laplace transform to the differential equation and then using ADM, we obtain a series solution that converges to the analytical solution of complex problems like the fractional order Sine-Gordon equation.
-
-### Shehu Transform-Adomian Decomposition Method (STADM)
-
-- **Shehu Transform:** An integral transform suited for solving fractional differential equations, addressing the challenges of fractional calculus.
-- **Combination (STADM):** Applying the Shehu transform followed by ADM allows for efficient analytical approximations of fractional differential equations, enhancing the ability to solve equations with Caputo derivatives.
-
-### Fractional Order Sine-Gordon Equation
-
-- **Equation Form:** Incorporates fractional derivatives in time and space, extending the classic Sine-Gordon equation.
-- **Caputo Derivative:** A definition of fractional derivatives ideal for initial value problems, making it suitable for modeling phenomena with memory effects.
-- **Applications:** Used in various fields like physics and engineering to describe wave propagation, Josephson junctions, and other nonlinear systems.
+- **Static Images:** Created using the Canvas API.
+- **Interactive Plots:** Not implemented to minimize dependencies.
 
 ## Installation
 
@@ -81,11 +67,6 @@ The application can now reverse-engineer fractals without prior knowledge of the
 
 - **Parameter Estimation:** Uses optimization techniques to infer parameters from fractal data.
 - **Analytical Approximations:** Provides series solutions for comparison with numerical simulations.
-
-## Visualization
-
-- **Interactive Plots:** Generated using Plotly.js.
-- **Static Images:** Created using the Canvas API.
 
 ## Validation and Testing
 
@@ -190,6 +171,37 @@ While debugging, you can execute JavaScript expressions in the Debug Console to 
    ```bash
    npm cache clean --force
    ```
+### Implemented Packages
+
+### Implemented Packages
+
+This project utilizes two main packages for data visualization:
+
+#### 1. Plotly NPM Package
+
+- **Description**: A Node.js client for the Plotly Graphing Library.
+- **Features**:
+  - Interfaces with the Plotly REST API.
+  - Enables creation of plots and saving them as images directly from Node.js.
+  - Offers a wide range of customizable chart types.
+- **Requirements**:
+  - Internet connection
+  - Plotly account credentials
+- **Use Case**: Ideal for projects requiring advanced, customizable plots with cloud storage and sharing capabilities.
+
+#### 2. nodeplotlib
+
+- **Description**: A Node.js library providing a simple interface for plotting using Plotly.
+- **Features**:
+  - Works in a Node.js environment without needing a browser or custom setup.
+  - Straightforward to use with a simple API.
+  - Does not require Plotly credentials.
+- **Advantages**:
+  - Self-contained solution
+  - Easy to integrate and use in local development environments
+- **Recommendation**: For simplicity and to keep everything self-contained, we recommend using `nodeplotlib` for most use cases in this project.
+
+To install these packages, run:
 
 ## Contributing
 

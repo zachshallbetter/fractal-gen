@@ -1,8 +1,28 @@
 /**
  * @module solvers/laplaceTransform
  * @description Provides functions to compute the Laplace Transform and its inverse numerically.
- * Implemented using asynchronous operations to prevent blocking.
- * @since 1.0.3
+ * This module achieves its intent by:
+ * - Implementing asynchronous functions for laplaceTransform and inverseLaplaceTransform
+ * - Using numerical integration techniques for the forward transform
+ * - Employing numerical inversion algorithms for the inverse transform
+ * - Preventing blocking operations through asynchronous implementation
+ * 
+ * Note: The current implementation contains placeholder functions. Actual numerical
+ * methods for Laplace Transform and its inverse need to be implemented.
+ * 
+ * @since 1.0.4
+ * 
+ * @example
+ * // Example usage of laplaceTransform:
+ * const f = (t) => Math.exp(-t);
+ * const F = await laplaceTransform(f);
+ * const result = await F(2); // Compute F(s) at s = 2
+ * 
+ * @example
+ * // Example usage of inverseLaplaceTransform:
+ * const F = (s) => 1 / (s + 1);
+ * const f = await inverseLaplaceTransform(F);
+ * const result = await f(3); // Compute f(t) at t = 3
  */
 
 const math = require('mathjs');
