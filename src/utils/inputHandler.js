@@ -2,32 +2,19 @@
  * @module utils/inputHandler
  * @description Parses and validates user inputs from command-line arguments using yargs.
  * Ensures comprehensive parameter definition and documentation for all models and methods.
- * Optimized to prevent blocking operations and validate inputs effectively.
- * Integrates with validation, parallel computation, output handling, and model selection modules.
  * 
- * - Handles input parsing and validation for various fractal generation models and methods
- * - Supports command-line arguments for model selection, method choice, and parameter configuration
- * - Integrates with other utility modules for comprehensive input processing and error handling
- * - Provides extensible architecture for adding new models and methods in the future
- * 
- * @example
- * const { parseInputs } = require('./inputHandler');
- * const inputs = await parseInputs();
- * 
- * @since 1.0.6
+ * @since 1.0.7
  */
 
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { validateNumber, validateRange, validatePositiveInteger } from './validators.js';
-import { ParallelComputation } from './parallelComputation.js';
-import { outputResults } from './outputHandler.js';
+import { validateNumber, validateFunction, ValidationError } from './validators.js';
 import { generateFractalData, getAvailableModels, getAvailableMethods } from '../models/modelSelector.js';
 
 /**
  * Parses and validates command-line arguments.
- * @returns {Promise<Object>} Parsed and validated arguments.
- * @throws {Error} If input validation fails.
+ * @returns {Object} Parsed and validated arguments.
+ * @throws {ValidationError} If input validation fails.
  */
 function parseInputs() {
   const availableModels = getAvailableModels();
@@ -55,12 +42,6 @@ function parseInputs() {
     .option('beta', {
       alias: 'b',
       describe: 'Fractional order in space (β)',
-      type: 'number',
-      default: 0.9,
-    })
-    .option('gamma', {
-      alias: 'g',
-      describe: 'Fractal dimension (γ)',
       type: 'number',
       default: 0.9,
     })
@@ -107,17 +88,13 @@ function parseInputs() {
       default: false,
     })
     .check((argv) => {
-      // Input validation using validators
       try {
-        validateRange(argv.alpha, 0, 1, 'Alpha');
-        validateRange(argv.beta, 0, 1, 'Beta');
-        validateRange(argv.gamma, 0, 1, 'Gamma');
-        validatePositiveInteger(argv.maxTerms, 'Max Terms');
-        validateNumber(argv.initialCondition, 'Initial Condition');
-        validatePositiveInteger(argv.timeEnd, 'Time End');
-        validatePositiveInteger(argv.timeSteps, 'Time Steps');
+        validateNumber(argv.alpha, 'Alpha', 0, 1);
+        validateNumber(argv.beta, 'Beta', 0, 1);
+        validateNumber(argv.maxTerms, 'Max Terms', 1);
+        // Add additional validations as needed
       } catch (error) {
-        throw new Error(`Input validation failed: ${error.message}`);
+        throw new ValidationError(error.message);
       }
       return true;
     })

@@ -21,12 +21,20 @@
  * @see {@link https://en.wikipedia.org/wiki/Sine-Gordon_equation|Sine-Gordon equation} for more information on the equation being solved.
  * @see {@link https://en.wikipedia.org/wiki/Euler_method|Euler method} for details on the numerical method used.
  */
-
-const math = require('mathjs');
+import math from 'mathjs';
 
 /**
- * Solves the fractional Sine-Gordon equation numerically.
- * @param {Object} params - Parameters for the solver, including initial conditions and step sizes.
+ * Solves the fractional Sine-Gordon equation numerically using the Euler method.
+ * The fractional Sine-Gordon equation is given by:
+ * ∂²u/∂t² - ∂²u/∂x² + sin(u) = 0
+ * 
+ * This implementation uses a simplified form:
+ * ∂u/∂t = sin(u)
+ * 
+ * @param {Object} params - Parameters for the solver.
+ * @param {number} params.initialCondition - Initial value of u at t=0.
+ * @param {number} params.timeEnd - End time for the simulation.
+ * @param {number} params.timeSteps - Number of time steps.
  * @returns {Promise<Function>} - A promise that resolves to the solution function u(t).
  */
 async function ladmSolver(params) {
@@ -38,7 +46,9 @@ async function ladmSolver(params) {
   for (let i = 1; i <= timeSteps; i++) {
     const t = i * dt;
     const uPrev = uValues[i - 1];
-    const du = dt * math.sin(uPrev); // Simplified derivative
+    // Euler method step: u_n+1 = u_n + dt * f(u_n)
+    // where f(u) = sin(u) for our simplified Sine-Gordon equation
+    const du = dt * math.sin(uPrev);
     const uNext = uPrev + du;
     uValues.push(uNext);
     tValues.push(t);
@@ -47,7 +57,7 @@ async function ladmSolver(params) {
   // Return the solution as a function interpolated over the computed values
   return (t) => {
     if (t <= timeEnd) {
-      const index = Math.floor((t / timeEnd) * timeSteps);
+      const index = math.floor((t / timeEnd) * timeSteps);
       return uValues[index];
     } else {
       return uValues[uValues.length - 1];
@@ -55,4 +65,4 @@ async function ladmSolver(params) {
   };
 }
 
-module.exports = { ladmSolver };
+export { ladmSolver };

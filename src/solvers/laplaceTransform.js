@@ -9,7 +9,7 @@
  * - Implementing comprehensive error handling and parameter validation
  * - Optimizing performance through efficient algorithms and parallel processing
  * 
- * @since 1.0.5
+ * @since 1.0.6
  * 
  * @example
  * // Example usage of laplaceTransform:
@@ -42,12 +42,13 @@
  *   console.error('Validation error:', error.message);
  * }
  */
-const math = require('mathjs');
-const { validateFunction, validateNumber } = require('../utils/validators');
-const { ParallelComputation } = require('../utils/parallelComputation');
+
+import math from 'mathjs';
+import { validateFunction, validateNumber } from '../utils/validators';
+import { ParallelComputation } from '../utils/parallelComputation';
 
 /**
- * Computes the Laplace transform of a given function.
+ * Computes the Laplace transform of a given function using numerical integration.
  * @async
  * @param {Function} f - The time-domain function to transform.
  * @returns {Function} - A function that computes the Laplace transform for a given s.
@@ -60,8 +61,9 @@ async function laplaceTransform(f) {
     validateNumber(s, 'Complex frequency variable');
 
     try {
-      const integrationMethod = new AdaptiveQuadrature();
-      return await integrationMethod.compute(t => f(t) * Math.exp(-s * t), 0, Infinity);
+      const integrand = (t) => Math.exp(-s * t) * f(t);
+      const upperLimit = 100; // Adjust based on the behavior of f(t)
+      return await math.integrate(integrand, 0, upperLimit);
     } catch (error) {
       throw new Error(`Laplace transform computation failed: ${error.message}`);
     }
@@ -69,7 +71,7 @@ async function laplaceTransform(f) {
 }
 
 /**
- * Computes the inverse Laplace transform of a given function.
+ * Computes the inverse Laplace transform of a given function using the Talbot method.
  * @async
  * @param {Function} F - The Laplace-domain function to invert.
  * @returns {Function} - A function that computes the inverse Laplace transform for a given t.
@@ -82,34 +84,54 @@ async function inverseLaplaceTransform(F) {
     validateNumber(t, 'Time variable');
 
     try {
-      const inversionMethod = new StehfestAlgorithm();
-      return await inversionMethod.compute(F, t);
+      const M = 64; // Number of terms in the Talbot algorithm
+      const talbotMethod = new TalbotMethod(M);
+      return await talbotMethod.compute(F, t);
     } catch (error) {
       throw new Error(`Inverse Laplace transform computation failed: ${error.message}`);
     }
   };
 }
-
 /**
- * Implements the adaptive quadrature method for numerical integration.
+ * Implements the Talbot method for numerical inversion of Laplace transforms.
  * @class
+ * @since 1.0.8
  */
-class AdaptiveQuadrature {
-  async compute(f, a, b, tolerance = 1e-10) {
-    // Implementation of adaptive quadrature algorithm
-    // This is a placeholder and should be replaced with actual implementation
+class TalbotMethod {
+  /**
+   * @param {number} M - Number of terms in the Talbot algorithm
+   */
+  constructor(M) {
+    this.M = M;
+  }
+
+  /**
+   * Computes the inverse Laplace transform using the Talbot method.
+   * @async
+   * @param {Function} F - The Laplace-domain function to invert
+   * @param {number} t - The time variable
+   * @returns {Promise<number>} The computed inverse Laplace transform value
+   */
+  async compute(F, t) {
+    const r = 2 * this.M / (5 * t);
+    let sum = 0;
+
+    for (let k = 0; k < this.M; k++) {
+      const theta = k * Math.PI / this.M;
+      const s = math.complex(
+        r * theta / Math.tan(theta),
+        r * theta
+      );
+      const z = math.multiply(t, s);
+      const dz = math.complex(
+        t * r / Math.pow(Math.sin(theta), 2),
+        t * r * (1 / Math.tan(theta) + theta)
+      );
+      sum += math.re(math.multiply(math.exp(z), F(s), dz));
+    }
+
+    return math.divide(math.multiply(r, sum), 2 * Math.PI);
   }
 }
 
-/**
- * Implements the Stehfest algorithm for numerical inversion of Laplace transforms.
- * @class
- */
-class StehfestAlgorithm {
-  async compute(F, t, N = 16) {
-    // Implementation of Stehfest algorithm
-    // This is a placeholder and should be replaced with actual implementation
-  }
-}
-
-module.exports = { laplaceTransform, inverseLaplaceTransform };
+export { laplaceTransform, inverseLaplaceTransform };

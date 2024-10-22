@@ -2,7 +2,7 @@
  * @module FractalGeneratorInterface
  * @description Handles user interactions and communicates with the server to generate fractals.
  * Provides an interactive interface for users to adjust parameters and visualize fractal data.
- * @since 1.0.2
+ * @since 1.0.3
  */
 
 const canvas = document.getElementById('fractalCanvas');
@@ -132,28 +132,58 @@ function displayError(message) {
 }
 
 /**
- * Populates the method select based on the selected model
+ * Populates the model select dropdown with available models
+ * @param {string[]} models - Array of available model names
+ */
+function populateModelSelect(models) {
+  modelSelect.innerHTML = '';
+  models.forEach(model => {
+    const option = document.createElement('option');
+    option.value = model;
+    option.textContent = model;
+    modelSelect.appendChild(option);
+  });
+}
+
+/**
+ * Populates the method select dropdown with available methods for the selected model
+ * @param {string[]} methods - Array of available method names
+ */
+function populateMethodSelect(methods) {
+  methodSelect.innerHTML = '';
+  methods.forEach(method => {
+    const option = document.createElement('option');
+    option.value = method;
+    option.textContent = method;
+    methodSelect.appendChild(option);
+  });
+}
+
+/**
+ * Fetches available models and methods from the server and populates the dropdowns
  * @async
  * @function
  */
-async function updateMethods() {
-  const model = modelSelect.value;
+async function fetchModelsAndMethods() {
   try {
-    const response = await fetch(`/methods/${model}`);
+    const response = await fetch('/api/models');
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const methods = await response.json();
-    methodSelect.innerHTML = methods.map(method => `<option value="${method}">${method}</option>`).join('');
-    generateFractal();
+    const data = await response.json();
+    populateModelSelect(data.models);
+    populateMethodSelect(data.methods[data.models[0]]);
+
+    // Add event listener to update methods when model changes
+    modelSelect.addEventListener('change', () => {
+      populateMethodSelect(data.methods[modelSelect.value]);
+      generateFractal();
+    });
   } catch (error) {
-    console.error('Error fetching methods:', error);
-    displayError('Failed to fetch available methods');
+    console.error('Error fetching models and methods:', error);
+    displayError('Failed to fetch available models and methods');
   }
 }
 
-// Event listener for model change
-modelSelect.addEventListener('change', updateMethods);
-
-// Initial method population and fractal generation
-updateMethods();
+// Initial fetch of models and methods, and fractal generation
+fetchModelsAndMethods().then(() => generateFractal());
