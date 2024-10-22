@@ -18,6 +18,7 @@
  */
 
 import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import { validateNumber, validateRange, validatePositiveInteger } from './validators.js';
 import { ParallelComputation } from './parallelComputation.js';
 import { outputResults } from './outputHandler.js';
@@ -28,11 +29,11 @@ import { generateFractalData, getAvailableModels, getAvailableMethods } from '..
  * @returns {Promise<Object>} Parsed and validated arguments.
  * @throws {Error} If input validation fails.
  */
-async function parseInputs() {
-  const availableModels = await getAvailableModels();
-  const availableMethods = await getAvailableMethods();
+function parseInputs() {
+  const availableModels = getAvailableModels();
+  const availableMethods = getAvailableMethods();
 
-  const argv = await yargs
+  const argv = yargs(hideBin(process.argv))
     .usage('Usage: $0 [options]')
     .option('model', {
       alias: 'm',
@@ -122,7 +123,7 @@ async function parseInputs() {
     })
     .help()
     .alias('help', 'h')
-    .argv;
+    .parse();
 
   return argv;
 }

@@ -7,8 +7,8 @@ This Node.js application generates fractals using advanced mathematical models a
 ### Key Features
 
 - **Advanced Mathematical Models**: Utilizes models such as the Nonlinear space–time fractal–fractional advection–diffusion–reaction equations, interpersonal relationships, two-scale population model, and fractional sine-Gordon model.
-- **Diverse Numerical Methods**: Supports a variety of methods including the Laplace-Adomian Decomposition Method (LADM) and Shehu Transform-Adomian Decomposition Method (STADM).
-- **Reverse Engineering**: Capable of inferring original parameters from generated fractal data using sophisticated optimization techniques.
+- **Diverse Numerical Methods**: Supports a variety of methods including the Laplace-Adomian Decomposition Method (LADM), Shehu Transform-Adomian Decomposition Method (STADM), He's Fractional Derivative, Fractional Complex Transform, He–Laplace Method, Fractal–Fractional Derivatives (ARL and ABC), Bernstein Polynomials and Operational Matrices, Modified Homotopy Perturbation Method, and Lagrangian Polynomial Interpolation.
+- **Reverse Engineering**: Capable of inferring original parameters from generated fractal data using sophisticated optimization techniques and analytical approximations.
 - **Interactive Visualizations**: Generates both static images and interactive plots to visualize the fractals, enhancing user engagement and understanding.
 - **Web Server**: Provides a web server for generating fractals on-demand, supporting multiple models and methods.
 

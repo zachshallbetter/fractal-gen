@@ -1,34 +1,54 @@
 /**
+ * @module FractalGeneratorApplication
  * @fileoverview Main entry point for the Fractal Generator application.
  * @description Orchestrates input parsing, fractal data generation, output handling, and reverse engineering.
  * Utilizes advanced mathematical models and methods to generate fractals and analyze them.
  * Optimized for non-blocking, performant execution suitable for edge computing environments.
- * @author
- * @since 1.0.3
+ * @since 1.0.5
  */
 
-const { parseInputs } = require('./utils/inputHandler');
-const { generateFractalData } = require('./models/modelSelector');
-const { outputResults } = require('./utils/outputHandler');
-const { reverseEngineer } = require('./utils/reverseEngineering');
+import { parseInputs } from './utils/inputHandler.js';
+import { processFractalRequest } from './fractalService.js';
+import { outputResults } from './utils/outputHandler.js';
+import { reverseEngineer } from './utils/reverseEngineering.js';
+import { startServer } from './server.js';
 
-(async function main() {
+/**
+ * Main function to execute the Fractal Generator application.
+ * @async
+ * @function
+ * @throws {Error} If an error occurs during execution.
+ */
+async function main() {
   try {
     // Parse user inputs
     const params = await parseInputs();
 
-    // Generate fractal data based on selected model and method
-    const data = await generateFractalData(params);
+    if (params.startServer) {
+      // Start the web server if requested
+      startServer();
+    } else {
+      // Generate fractal data using the fractalService
+      const result = await processFractalRequest(params);
 
-    // Output results (data files, plots, images)
-    await outputResults(data, params);
+      if (!result.success) {
+        throw new Error(result.message);
+      }
 
-    // Reverse engineering (if enabled)
-    if (params.reverseEngineer) {
-      const inferredParams = await reverseEngineer(data, params);
-      console.log('Inferred Parameters:', inferredParams);
+      // Output results (data files, plots, images)
+      await outputResults(result.data, params);
+
+      // Reverse engineering (if enabled)
+      if (params.reverseEngineer) {
+        const inferredParams = await reverseEngineer(result.data, params);
+        console.log('Inferred Parameters:', inferredParams);
+      }
     }
   } catch (error) {
-    console.error('An error occurred:', error);
+    console.error('An error occurred:', error.message);
+    process.exit(1);
   }
-})();
+}
+
+// Execute the main function
+main();

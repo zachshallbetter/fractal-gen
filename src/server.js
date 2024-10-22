@@ -1,42 +1,66 @@
 /**
- * Fractal Generator Web Server
- * Sets up an Express server to serve the web interface and handle fractal generation requests.
- *
  * @module FractalGeneratorServer
- * @since 1.0.1
+ * @description Sets up an Express server to serve the web interface and handle fractal generation requests.
+ * Integrates with the fractalService module to process fractal generation requests.
+ * Implements security measures and serves static files for the web interface.
+ * @since 1.0.2
  */
 
-const express = require('express');
-const bodyParser = require('body-parser');
-const path = require('path');
-const helmet = require('helmet');  // Security middleware
+import express from 'express';
+import bodyParser from 'body-parser';
+import path from 'path';
+import helmet from 'helmet';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const { generateFractalData } = require('./fractalService');
+import { processFractalRequest, getModels, getMethods } from './fractalService.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+/**
+ * Initializes and starts the Express server for the Fractal Generator application.
+ * @function
+ * @throws {Error} If server initialization fails.
+ */
 function startServer() {
     const app = express();
     app.use(bodyParser.json());
-    app.use(helmet());  // Enhance security
+    app.use(helmet());
 
     // Serve static files from the 'public' directory
     app.use(express.static(path.join(__dirname, '..', 'public')));
 
     // Handle fractal generation requests
-    app.post('/generateFractal', (req, res) => {
-        const params = req.body;
+    app.post('/generateFractal', async (req, res) => {
+        try {
+            const result = await processFractalRequest(req.body);
+            res.json(result);
+        } catch (error) {
+            console.error('Error generating fractal:', error);
+            res.status(500).json({ success: false, error: 'Failed to generate fractal' });
+        }
+    });
 
-        generateFractalData(params)
-            .then(data => res.json(data))
-            .catch(error => {
-                console.error('Error generating fractal:', error);
-                res.status(500).json({ error: 'Failed to generate fractal' });
-            });
+    // Endpoint to get available models
+    app.get('/models', (req, res) => {
+        res.json(getModels());
+    });
+
+    // Endpoint to get available methods for a specific model
+    app.get('/methods/:model', (req, res) => {
+        try {
+            const methods = getMethods(req.params.model);
+            res.json(methods);
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
     });
 
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
-        console.log(`Server is running at http://localhost:${PORT}`);
+        console.log(`Fractal Generator Server is running at http://localhost:${PORT}`);
     });
 }
 
-module.exports = { startServer };
+export { startServer };

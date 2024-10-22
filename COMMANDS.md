@@ -25,7 +25,7 @@ node src/index.js --model advectionDiffusion --method STADM --alpha 0.7 --beta 0
 **Command:**
 
 ```bash
-node src/index.js --model interpersonal --method fractalFractional --alpha 0.5 --gamma 0.3 --timeSteps 200 --timeEnd 50
+node src/index.js --model interpersonal --method MHPM --alpha 0.5 --gamma 0.3 --timeSteps 200 --timeEnd 50
 ```
 
 ### Generate a Fractal Using the Two-Scale Model
@@ -105,11 +105,11 @@ Runs the fractal generation for the Two-Scale model using 500 time steps up to a
 **Command:**
 
 ```bash
-node src/index.js --model interpersonal --method fractalFractional --alpha 0.5 --gamma 0.3 --timeSteps 200 --timeEnd 50
+node src/index.js --model interpersonal --method MHPM --alpha 0.5 --gamma 0.3 --timeSteps 200 --timeEnd 50
 ```
 
 **Description:**
-Utilizes the fractal-fractional solver to explore the dynamics of interpersonal relationships over time, using specified fractional orders and time settings.
+Utilizes the Modified Homotopy Perturbation Method (MHPM) to explore the dynamics of interpersonal relationships over time, using specified fractional orders and time settings.
 
 **Expected Output:**
 

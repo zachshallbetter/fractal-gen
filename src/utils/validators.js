@@ -38,11 +38,13 @@ function validateFunction(func) {
 
 /**
  * Validates if the input is a number.
- * @param {*} num - The input to validate as a number.
+ * @param {*} value - The input to validate as a number.
  * @param {string} paramName - The name of the parameter being validated.
- * @throws {TypeError} If the input is not a number.
+ * @param {number} [min=Number.MIN_SAFE_INTEGER] - Minimum allowed value.
+ * @param {number} [max=Number.MAX_SAFE_INTEGER] - Maximum allowed value.
+ * @throws {ValidationError} If the input is not a valid number or out of range.
  */
-function validateNumber(value, { min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER, paramName = 'Parameter' }) {
+function validateNumber(value, paramName = 'Parameter', min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER) {
   if (typeof value !== 'number' || isNaN(value)) {
     throw new ValidationError(`${paramName} must be a valid number`);
   }
@@ -91,4 +93,4 @@ class RangeError extends ValidationError {
   }
 }
 
-module.exports = { validateFunction, validateNumber, validateResults, ValidationError, RangeError };
+export { validateFunction, validateNumber, validateResults, ValidationError, RangeError };
