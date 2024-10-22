@@ -5,7 +5,7 @@
  * Ensures solvers are executed in a non-blocking manner suitable for edge environments.
  * 
  * This module achieves its intent by:
- * - Supporting multiple solvers (LADM, STADM, MHPM, Runge-Kutta, etc.)
+ * - Supporting multiple solvers (LADM, STADM, MHPM, Runge-Kutta, Adomian Decomposition, etc.)
  * - Providing a unified interface for solving fractional differential equations
  * - Validating solver and method selection
  * - Delegating execution to specific solver implementations
@@ -25,73 +25,110 @@
  *   timeEnd: 10,
  * });
  * 
- * @since 1.1.0
+ * @since 1.1.4
  */
 
 import { ladmSolver } from './ladmSolver.js';
 import { stadmSolver } from './stadmSolver.js';
-import { mhpmSolver } from './mhpmSolver.js';
 import { rungeKuttaSolver } from './rungeKuttaSolver.js';
-import { validateParameters, validateString } from '../utils/validation.js';
+import { grunwaldLetnikovSolver } from './grunwaldLetnikovSolver.js';
+import { mhpmSolver } from './mhpmSolver.js';
 import logger from '../utils/logger.js';
 
-/**
- * Map of solvers to their implementations.
- */
-const solverImplementations = {
+const solverMap = {
   LADM: ladmSolver,
   STADM: stadmSolver,
-  MHPM: mhpmSolver,
   RungeKutta: rungeKuttaSolver,
-  // ... other solvers ...
+  GrunwaldLetnikov: grunwaldLetnikovSolver,
+  MHPM: mhpmSolver,
 };
 
 /**
- * Solves a fractional differential equation using the selected solver.
+ * Selects the appropriate solver based on the given method.
+ * @param {string} method - The solver method to use.
+ * @returns {Function} The selected solver function.
+ * @throws {Error} If the solver for the specified method is not found.
+ */
+export function selectSolver(method) {
+  const solver = solverMap[method];
+  if (!solver) {
+    logger.error(`Solver for method "${method}" not found.`);
+    throw new Error(`Solver for method "${method}" not found.`);
+  }
+  logger.info(`Selected solver: ${method}`);
+  return solver;
+}
+
+/**
+ * Solves a fractional differential equation using the specified solver and parameters.
  * @async
  * @param {Object} params - The parameters for solving the equation.
- * @param {string} params.solver - The numerical solver to use.
+ * @param {string} params.solver - The solver method to use.
  * @param {string} params.model - The fractional differential equation model.
- * @param {number} params.alpha - Fractional order (typically time-related).
- * @param {number} [params.beta] - Fractional order (typically space-related, if applicable).
- * @param {Function} params.initialCondition - Initial condition function.
- * @param {number} params.timeSteps - Number of time steps.
- * @param {number} params.timeEnd - End time for the solution.
- * @returns {Promise<Array<{ t: number, u: number }>>} - An array of solution points.
- * @throws {Error} If the solver is not recognized or if parameter validation fails.
+ * @param {number} params.alpha - The fractional order.
+ * @param {number} params.beta - The second fractional order (if applicable).
+ * @param {Function} params.initialCondition - The initial condition function.
+ * @param {number} params.timeSteps - The number of time steps.
+ * @param {number} params.timeEnd - The end time for the solution.
+ * @param {Object} [params.options] - Additional solver-specific options.
+ * @returns {Promise<Object>} The solution to the fractional differential equation.
+ * @throws {Error} If there's an error during the solving process or if parameters are invalid.
  */
-async function solveFractionalDE(params) {
+export async function solveFractionalDE(params) {
   try {
-    validateParameters(params);
-    validateString(params.solver, 'Solver');
-    validateString(params.model, 'Model');
+    // Validate input parameters
+    validateSolverParams(params);
 
-    const { solver } = params;
+    const solver = selectSolver(params.solver);
+    logger.info(`Starting solution computation using ${params.solver} for model ${params.model}`);
 
-    if (!solverImplementations[solver]) {
-      throw new Error(`Solver "${solver}" is not supported.`);
-    }
+    const startTime = performance.now();
+    const solution = await solver(params);
+    const endTime = performance.now();
 
-    const solverFunction = solverImplementations[solver];
+    const computationTime = endTime - startTime;
+    logger.info(`Solution computed successfully using ${params.solver}. Computation time: ${computationTime.toFixed(2)}ms`);
 
-    logger.info(`Solving fractional DE using ${solver} solver for ${params.model} model`, { params });
-    const solution = await solverFunction(params);
-    logger.info(`Fractional DE solution completed successfully`, { solver, model: params.model });
-    return solution;
+    return {
+      ...solution,
+      metadata: {
+        solver: params.solver,
+        model: params.model,
+        computationTime,
+        params: { ...params, initialCondition: params.initialCondition.toString() }
+      }
+    };
   } catch (error) {
-    logger.error('Error solving fractional DE', error, { params });
-    throw error;
+    logger.error(`Error solving fractional DE with ${params.solver}:`, error);
+    throw new Error(`Failed to solve fractional DE: ${error.message}`);
   }
 }
 
 /**
- * Returns an array of available solver names.
- * @returns {string[]} Array of solver names.
+ * Validates the input parameters for the fractional DE solver.
+ * @param {Object} params - The parameters to validate.
+ * @throws {Error} If any parameter is invalid.
  */
-function getAvailableSolvers() {
-  const solvers = Object.keys(solverImplementations);
-  logger.debug('Retrieved available solvers', { solvers });
-  return solvers;
+function validateSolverParams(params) {
+  if (!params.solver || !solverMap[params.solver]) {
+    throw new Error(`Invalid solver: ${params.solver}`);
+  }
+  if (!params.model) {
+    throw new Error('Model must be specified');
+  }
+  if (typeof params.alpha !== 'number' || params.alpha <= 0 || params.alpha > 1) {
+    throw new Error('Alpha must be a number between 0 and 1');
+  }
+  if (params.beta !== undefined && (typeof params.beta !== 'number' || params.beta <= 0)) {
+    throw new Error('Beta, if provided, must be a positive number');
+  }
+  if (typeof params.initialCondition !== 'function') {
+    throw new Error('Initial condition must be a function');
+  }
+  if (!Number.isInteger(params.timeSteps) || params.timeSteps <= 0) {
+    throw new Error('Time steps must be a positive integer');
+  }
+  if (typeof params.timeEnd !== 'number' || params.timeEnd <= 0) {
+    throw new Error('End time must be a positive number');
+  }
 }
-
-export { solveFractionalDE, getAvailableSolvers };

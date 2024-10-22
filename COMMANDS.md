@@ -23,6 +23,22 @@ This document provides a comprehensive overview of the various commands used to 
 
 ---
 
+### Corrected Command Examples
+
+#### Generate a Fractal Using the Fractional Heat Equation
+
+**Command:**
+
+```bash
+node src/index.js --model fractionalHeat --method bernsteinPolynomials --alpha 0.7 --maxTerms 10
+```
+
+**Description:**
+
+Utilizes **Bernstein Polynomials** to solve the **Fractional Heat Equation**, demonstrating the application of fractional calculus in heat transfer phenomena.
+
+---
+
 ## Basic Commands
 
 ### Start the Server

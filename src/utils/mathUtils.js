@@ -14,7 +14,7 @@ const math = create(all); // Initialize math.js
  * @param {number} k - The number of items to choose.
  * @returns {number} - The binomial coefficient \( \binom{n}{k} \).
  */
-function combination(n, k) {
+export function combination(n, k) {
   if (!Number.isInteger(n) || !Number.isInteger(k)) {
     throw new Error('n and k must be integers');
   }
@@ -36,7 +36,7 @@ function combination(n, k) {
  * @param {number} z - The input value.
  * @returns {number} - The Gamma function evaluated at \( z \).
  */
-function gammaFunction(z) {
+export function gammaFunction(z) {
   return math.gamma(z);
 }
 
@@ -46,7 +46,7 @@ function gammaFunction(z) {
  * @param {number} b - The divisor.
  * @returns {number} - The remainder of a divided by b.
  */
-function mod(a, b) {
+export function mod(a, b) {
   return ((a % b) + b) % b;
 }
 
@@ -56,15 +56,11 @@ function mod(a, b) {
  * @param {number} b - The second number.
  * @returns {number} - The larger of a and b.
  */
-function max(a, b) {
+export function max(a, b) {
   return Math.max(a, b);
 }
 
-// Export the math object and utility functions
-export { 
-  math,
-  combination,
-  gammaFunction,
-  mod,
-  max,
-};
+
+export function numericalIntegration(f, a, b, n) {
+  return math.integrate(f, a, b, n);
+}

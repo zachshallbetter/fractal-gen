@@ -1,114 +1,112 @@
 /**
  * @module solvers/ladmSolver
- * @description Implements the Laplace Adomian Decomposition Method (LADM) solver for fractional differential equations.
+ * @description Solves the fractional Sine-Gordon equation using the Local Adomian Decomposition Method (LADM).
  * This module achieves its intent by:
- * - Implementing the LADM algorithm for solving fractional differential equations
- * - Utilizing parallel computation for improved performance
- * - Providing a numerical solution to various fractional models, including the Sine-Gordon equation
+ * - Implementing asynchronous operations to prevent blocking
+ * - Utilizing the Adomian Decomposition Method for solving nonlinear fractional differential equations
+ * - Employing a local approach to improve convergence and efficiency
+ * - Integrating with mathUtils and validation modules for enhanced functionality
  * 
- * @since 1.0.9
+ * The fractional Sine-Gordon equation is defined as:
+ * 
+ * D^α_t u(x,t) + sin(u(x,t)) = 0, 0 < α ≤ 2
+ * 
+ * Where D^α_t represents the fractional derivative of order α with respect to t,
+ * and u(x,t) is the solution we're seeking.
+ * 
+ * @since 1.0.7
  * 
  * @example
- * import { ladmSolver } from './ladmSolver.js';
+ * // Example usage of ladmSolver:
+ * import { ladmSolver } from './solvers/ladmSolver.js';
+ * import logger from '../utils/logger.js';
  * 
  * const params = {
- *   model: 'fractionalSineGordon',
- *   alpha: 0.5,
- *   beta: 0.5,
- *   initialCondition: (t) => Math.sin(t),
- *   timeEnd: 10,
- *   timeSteps: 1000,
- *   maxTerms: 10
+ *   initialCondition: 0,
+ *   timeEnd: 1,
+ *   timeSteps: 100,
+ *   alpha: 1.5 // Fractional order
  * };
- * const solution = await ladmSolver(params);
- * const u_at_t5 = solution(5); // Get the solution at t = 5
  * 
- * @see {@link https://www.sciencedirect.com/science/article/pii/S0377042721004131|LADM for fractional differential equations}
+ * try {
+ *   const solution = await ladmSolver(params);
+ *   const t = 0.5;
+ *   const result = await solution(t);
+ *   logger.info('LADM solution computed successfully', { result });
+ * } catch (error) {
+ *   logger.error('Error in LADM solver:', error);
+ * }
+ * 
+ * @see {@link https://www.sciencedirect.com/science/article/pii/S0377042721004131|Local Adomian Decomposition Method}
+ * for more information on the LADM and its applications to fractional differential equations.
  */
 
-import { ParallelComputation } from '../utils/parallelComputation.js';
-import { validateParameters } from '../utils/validation.js';
+import { create, all } from 'mathjs';
+import { validateObject, validateNumber, validatePositiveInteger } from '../utils/validation.js';
+import { generateAdomianPolynomials } from './adomianDecomposition.js';
 import logger from '../utils/logger.js';
-import { generateOperationalMatrices, bernsteinPolynomials } from '../utils/mathUtils.js';
-import { processFractalRequest } from '../fractalService.js';
+
+const math = create(all);
 
 /**
- * Solves fractional differential equations using the Laplace Adomian Decomposition Method.
- * 
+ * Solves the fractional Sine-Gordon equation numerically using LADM.
  * @async
  * @param {Object} params - Parameters for the solver.
- * @param {string} params.model - The model to solve (e.g., 'fractionalSineGordon', 'advectionDiffusionReaction').
- * @param {number} params.alpha - Fractional order in time.
- * @param {number} params.beta - Fractional order in space (if applicable).
- * @param {Function} params.initialCondition - Initial condition function.
- * @param {number} params.timeEnd - End time for the simulation.
+ * @param {number} params.initialCondition - Initial condition u(x,0).
+ * @param {number} params.timeEnd - End time for the solution.
  * @param {number} params.timeSteps - Number of time steps.
- * @param {number} params.maxTerms - Maximum number of terms in the LADM series.
- * @returns {Promise<Function>} - A promise that resolves to the solution function u(t, x).
+ * @param {number} params.alpha - Fractional order of the equation (0 < α ≤ 2).
+ * @returns {Promise<Function>} - A promise that resolves to the solution function u(t).
+ * @throws {Error} If the input is invalid or computation fails.
  */
 export async function ladmSolver(params) {
+  validateObject(params, 'Solver parameters');
+  const { initialCondition, timeEnd, timeSteps, alpha } = params;
+  validateNumber(initialCondition, 'Initial condition');
+  validateNumber(timeEnd, 'End time');
+  validatePositiveInteger(timeSteps, 'Number of time steps');
+  validateNumber(alpha, 'Fractional order');
+
+  if (alpha <= 0 || alpha > 2) {
+    throw new Error('Fractional order must be in the range 0 < α ≤ 2');
+  }
+
+  const dt = timeEnd / timeSteps;
+  const uValues = [initialCondition];
+  const tValues = [0];
+
   try {
-    validateParameters(params);
-    logger.info('Starting LADM solver', { params });
+    for (let i = 1; i <= timeSteps; i++) {
+      const t = i * dt;
+      const uPrev = uValues[i - 1];
+      
+      // Compute Adomian polynomials
+      const A = await generateAdomianPolynomials([uPrev], 1);
+      
+      // LADM iteration
+      const du = math.multiply(
+        math.pow(dt, alpha),
+        math.divide(A[0](t), math.gamma(alpha + 1))
+      );
+      const uNext = math.add(uPrev, du);
+      
+      uValues.push(uNext);
+      tValues.push(t);
+    }
 
-    const { model, alpha, beta, initialCondition, timeEnd, timeSteps, maxTerms } = params;
-    const dt = timeEnd / timeSteps;
-    const n = maxTerms;
+    logger.info('LADM solution computed successfully');
 
-    const B_t = bernsteinPolynomials(n, 't');
-    const B_x = bernsteinPolynomials(n, 'x');
-    const D_t = generateOperationalMatrices('time', alpha, 1, n);
-    const D_x = generateOperationalMatrices('space', beta || alpha, 1, n);
-
-    const parallelComputation = new ParallelComputation();
-    const tasks = Array(n).fill().map((_, i) => () => computeLADMTerm(i, B_t, B_x, D_t, D_x, model));
-
-    const terms = await parallelComputation.executeTasks(tasks);
-
-    logger.info('LADM solver completed successfully');
-
-    return (t, x) => {
-      let solution = initialCondition(t);
-      for (let i = 0; i < n; i++) {
-        solution += terms[i](t, x);
+    // Return the solution as a function interpolated over the computed values
+    return (t) => {
+      if (t <= timeEnd) {
+        const index = Math.floor((t / timeEnd) * timeSteps);
+        return uValues[index];
+      } else {
+        return uValues[uValues.length - 1];
       }
-      return solution;
     };
   } catch (error) {
-    logger.error('Error in LADM solver:', error);
-    throw error;
+    logger.error('Error in LADM computation:', error);
+    throw new Error(`LADM computation failed: ${error.message}`);
   }
 }
-
-/**
- * Computes a single term of the LADM series.
- * 
- * @param {number} i - Term index.
- * @param {Function} B_t - Time Bernstein polynomial.
- * @param {Function} B_x - Space Bernstein polynomial.
- * @param {Array} D_t - Time operational matrix.
- * @param {Array} D_x - Space operational matrix.
- * @param {string} model - The model being solved.
- * @returns {Function} - The computed term as a function of t and x.
- */
-function computeLADMTerm(i, B_t, B_x, D_t, D_x, model) {
-  // Implementation depends on the specific model
-  // This is a placeholder and should be replaced with actual computation
-  return (t, x) => {
-    const termValue = B_t(t) * B_x(x) * Math.pow(t, i) / factorial(i);
-    return model === 'fractionalSineGordon' ? Math.sin(termValue) : termValue;
-  };
-}
-
-/**
- * Computes the factorial of a number.
- * 
- * @param {number} n - The number to compute factorial for.
- * @returns {number} - The factorial of n.
- */
-function factorial(n) {
-  if (n === 0 || n === 1) return 1;
-  return n * factorial(n - 1);
-}
-
-export { ladmSolver };

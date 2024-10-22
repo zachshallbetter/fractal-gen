@@ -20,8 +20,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { createInteractivePlot } from '../visualizations/plotGenerator.js';
-import { createFractalImage } from '../visualizations/imageGenerator.js';
+import { createInteractivePlot } from '../visualizations/plotGenerator';
+import { createFractalImage } from '../visualizations/imageGenerator';
 import { validateResults } from './validators.js';
 import { ParallelComputation } from './parallelComputation.js';
 import logger from './logger.js';

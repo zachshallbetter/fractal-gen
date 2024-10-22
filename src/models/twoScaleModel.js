@@ -1,45 +1,28 @@
 /**
  * @module models/twoScaleModel
- * @description Implements the Two-Scale Population Model using various numerical methods.
- * @since 1.0.14
+ * @description Implements the Two-Scale Population Model using He-Laplace Method and Fractional Complex Transform.
+ * @since 1.0.1
  */
 
-import { rungeKuttaSolver } from '../solvers/rungeKuttaSolver.js';
-import { validateParameters } from '../utils/validation.js';
+const { hesFractionalDerivative } = require('../solvers/hesFractionalDerivative');
+const { heLaplaceMethod } = require('../solvers/heLaplaceMethod');
 
-/**
- * Defines the ODE for the Two-Scale Population Model.
- * @param {number} t - Time variable.
- * @param {number} y - Population at time t.
- * @param {Object} params - Model parameters.
- * @returns {number} The derivative dy/dt.
- */
-function twoScalePopulationModel(t, y, params) {
-  const { growthRate, carryingCapacity } = params;
-  return growthRate * y * (1 - y / carryingCapacity);
+async function solve(params) {
+  // Define the fractional differential equation
+  const fractionalDE = (t, y) => hesFractionalDerivative(y, params.alpha, t) + y(t);
+
+  // Apply He-Laplace Method to solve the ODE
+  const solution = heLaplaceMethod(fractionalDE, params.initialCondition);
+
+  // Generate data points
+  const data = [];
+  const dt = params.timeEnd / params.timeSteps;
+  for (let i = 0; i <= params.timeSteps; i++) {
+    const t = i * dt;
+    data.push({ x: t, y: solution(t) });
+  }
+
+  return data;
 }
 
-/**
- * Solves the Two-Scale Population Model using the specified numerical method.
- * @async
- * @param {Object} params - Parameters for the solver.
- * @returns {Promise<Array<{ t: number, y: number }>>} - Solution data points.
- * @since 1.0.14
- */
-async function solveTwoScaleModel(params) {
-  validateParameters(params);
-
-  const solverParams = {
-    f: twoScalePopulationModel,
-    t0: params.t0 || 0,
-    y0: params.y0 || 10,
-    h: params.h || 0.1,
-    steps: params.steps || 100,
-    params,
-  };
-
-  const solution = await rungeKuttaSolver(solverParams);
-  return solution;
-}
-
-export { solveTwoScaleModel };
+module.exports = { solve };

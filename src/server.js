@@ -1,60 +1,41 @@
 /**
  * @module FractalGeneratorServer
- * @description Sets up an Express server to serve the web interface and handle fractal generation requests.
- * @since 1.0.5
+ * @description Sets up an Express server with WebSocket support to serve the web interface and handle real-time fractal generation requests.
+ * @since 1.0.7
  */
 
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { processFractalRequest, getModels, getMethods } from './fractalService.js';
+import http from 'http';
+import { WebSocketServer } from 'ws';
+import { processFractalRequest, getAvailableMethods } from './services/fractalService.js';
 
-function startServer() {
-  const app = express();
-  app.use(express.json());
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
 
-  // Determine directory name in ES modules
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
+app.use(express.static('public'));
 
-  // Serve static files from the 'public' directory
-  app.use(express.static(path.join(__dirname, '..', 'public')));
-
-  // Handle fractal generation requests
-  app.post('/generateFractal', async (req, res, next) => {
-    try {
-      const params = req.body;
-      const result = await processFractalRequest(params);
-      res.json(result);
-    } catch (error) {
-      next(error);
+wss.on('connection', (ws) => {
+  ws.on('message', async (message) => {
+    const params = JSON.parse(message);
+    if (params.action === 'getMethods') {
+      try {
+        const methods = getAvailableMethods(params.model);
+        ws.send(JSON.stringify({ methods }));
+      } catch (error) {
+        ws.send(JSON.stringify({ success: false, error: error.message }));
+      }
+    } else {
+      try {
+        const result = await processFractalRequest(params);
+        ws.send(JSON.stringify(result));
+      } catch (error) {
+        ws.send(JSON.stringify({ success: false, error: error.message }));
+      }
     }
   });
+});
 
-  // Error handling middleware
-  app.use((err, req, res, next) => {
-    console.error('Server error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  });
-
-  // Handle API requests for available models and methods
-  app.get('/api/models', (req, res, next) => {
-    try {
-      const models = getModels();
-      const methods = {};
-      models.forEach(model => {
-        methods[model] = getMethods(model);
-      });
-      res.json({ models, methods });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`Server is running at http://localhost:${PORT}`);
-  });
-}
-
-export { startServer };
+server.listen(3000, () => {
+  console.log('Server running on http://localhost:3000');
+});

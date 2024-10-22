@@ -51,7 +51,7 @@ import { inverseShehuTransform } from './inverseShehuTransform.js';
  * @returns {Promise<Function>} - The reconstructed nonlinear term as a function.
  * @throws {Error} If input validation fails.
  */
-async function reconstructNonlinearTerm(solutionData, n) {
+export async function reconstructNonlinearTerm(solutionData, n) {
   try {
     validateArray(solutionData, 'solutionData');
     validatePositiveInteger(n, 'n');
@@ -90,7 +90,7 @@ async function reconstructNonlinearTerm(solutionData, n) {
  * @param {number} params.spaceSteps - Number of space steps
  * @returns {Promise<Object>} - Reconstructed equation data
  */
-async function solveILADM(params) {
+export async function solveILADM(params) {
   try {
     validateNumber(params.alpha, 'alpha', 0, 1);
     validateNumber(params.beta, 'beta', 0, 2);
@@ -134,5 +134,3 @@ async function solveILADM(params) {
     };
   }
 }
-
-export { reconstructNonlinearTerm, solveILADM };

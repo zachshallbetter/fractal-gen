@@ -27,7 +27,7 @@
  * @see {@link https://www.mdpi.com/2227-7390/8/4/522|Variance Reduction of Sequential Monte Carlo Approach}
  * for more information on using Sobol sequences for variance reduction.
  * 
- * @since 1.2.1
+ * @since 1.2.2
  */
 
 import { validatePositiveInteger } from './validation.js';
@@ -78,7 +78,7 @@ export function generateSobolSequence(dimension, numPoints) {
  * @param {number[]} directionNumbers - Direction numbers for a dimension.
  * @returns {number[]} - Computed direction vector.
  */
-function computeDirectionVector(directionNumbers) {
+export function computeDirectionVector(directionNumbers) {
   return directionNumbers.map((num, i) => num / (1 << (i + 1)));
 }
 
@@ -88,7 +88,7 @@ function computeDirectionVector(directionNumbers) {
  * @param {number[][]} directionVectors - Direction vectors for each dimension.
  * @returns {number[]} - A single point in the Sobol sequence.
  */
-function generateSobolPoint(index, directionVectors) {
+export function generateSobolPoint(index, directionVectors) {
   return directionVectors.map((vector) => {
     let x = 0;
     const dimensionBits = vector.length;
@@ -152,5 +152,3 @@ export function computeDiscrepancy(sequence) {
     throw new Error(`Discrepancy computation failed: ${error.message}`);
   }
 }
-
-export { generateSobolSequence, scrambleSobolSequence, computeDiscrepancy };

@@ -40,7 +40,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { validateArray, validateObject, ValidationError } from './validation.js';
 import { logger } from './logger.js';
-import { dbClient } from '../dbService.js';
+import { dbClient } from '../services/dbService.js';
 import { ParallelComputation } from './parallelComputation.js';
 
 /**
@@ -171,7 +171,7 @@ export async function createFractalAnimation(dataFrames, params) {
  * @param {number} frameIndex - The index of the current frame.
  * @returns {Promise<string>} - The path to the generated frame image.
  */
-async function generateAnimationFrame(frameData, params, frameIndex) {
+export async function generateAnimationFrame(frameData, params, frameIndex) {
   const options = {
     width: 800,
     height: 600,
@@ -201,5 +201,3 @@ async function generateAnimationFrame(frameData, params, frameIndex) {
 
   return filePath;
 }
-
-export { createInteractivePlot, generateFractalImage, createFractalAnimation };

@@ -2,81 +2,65 @@
  * @module solvers/laplaceTransform
  * @description Provides functions to compute the Laplace Transform and its inverse numerically.
  * This module achieves its intent by:
- * - Implementing asynchronous functions for laplaceTransform and inverseLaplaceTransform
- * - Using advanced numerical integration techniques for the forward transform
- * - Employing sophisticated numerical inversion algorithms for the inverse transform
- * - Preventing blocking operations through asynchronous implementation
- * - Implementing comprehensive error handling and parameter validation
- * - Optimizing performance through efficient algorithms and parallel processing
+ * - Implementing asynchronous operations to prevent blocking
+ * - Utilizing numerical integration techniques for forward Laplace Transform
+ * - Employing the Talbot method for inverse Laplace Transform
+ * - Integrating with mathUtils and validation modules for enhanced functionality
  * 
- * @since 1.0.10
+ * The Laplace Transform is defined as:
+ * 
+ * F(s) = ∫[0 to ∞] f(t) * e^(-st) dt
+ * 
+ * Where f(t) is the original function and F(s) is its Laplace Transform.
+ * 
+ * @since 1.0.4
  * 
  * @example
  * // Example usage of laplaceTransform:
- * import { laplaceTransform } from './laplaceTransform.js';
+ * import { laplaceTransform, inverseLaplaceTransform } from './solvers/laplaceTransform.js';
  * import logger from '../utils/logger.js';
  * 
  * const f = (t) => Math.exp(-t);
  * try {
  *   const F = await laplaceTransform(f);
- *   const result = await F(2); // Compute F(s) at s = 2
- *   logger.info('Laplace transform result:', { result });
+ *   const s = 2;
+ *   const result = await F(s);
+ *   logger.info('Laplace transform computed successfully', { result });
+ *   
+ *   const inverseF = await inverseLaplaceTransform(F);
+ *   const t = 1;
+ *   const inverseResult = await inverseF(t);
+ *   logger.info('Inverse Laplace transform computed successfully', { inverseResult });
  * } catch (error) {
- *   logger.error('Error in Laplace transform:', error);
+ *   logger.error('Error in Laplace transform operations:', error);
  * }
  * 
- * @example
- * // Example usage of inverseLaplaceTransform:
- * import { inverseLaplaceTransform } from './laplaceTransform.js';
- * import logger from '../utils/logger.js';
- * 
- * const F = (s) => 1 / (s + 1);
- * try {
- *   const f = await inverseLaplaceTransform(F);
- *   const result = await f(3); // Compute f(t) at t = 3
- *   logger.info('Inverse Laplace transform result:', { result });
- * } catch (error) {
- *   logger.error('Error in inverse Laplace transform:', error);
- * }
- * 
- * @example
- * // Example of error handling and parameter validation:
- * import { laplaceTransform } from './laplaceTransform.js';
- * import logger from '../utils/logger.js';
- * 
- * try {
- *   const invalidF = 'not a function';
- *   await laplaceTransform(invalidF);
- * } catch (error) {
- *   logger.error('Validation error:', error);
- * }
+ * @see {@link https://en.wikipedia.org/wiki/Laplace_transform|Laplace transform}
+ * for more information on the Laplace Transform and its applications.
  */
 
 import { create, all } from 'mathjs';
 import { validateFunction, validateNumber } from '../utils/validation.js';
 import { ParallelComputation } from '../utils/parallelComputation.js';
 import logger from '../utils/logger.js';
-import { combinations } from '../utils/mathUtils.js';
 
 const math = create(all);
 
 /**
- * Computes the Laplace transform of a given function using numerical integration.
+ * Computes the Laplace Transform of a function f(t) asynchronously.
  * @async
- * @param {Function} f - The time-domain function to transform.
- * @returns {Function} - A function that computes the Laplace transform for a given s.
+ * @param {Function} f - The function to transform.
+ * @returns {Promise<Function>} - A promise that resolves to the Laplace Transformed function F(s).
  * @throws {Error} If the input is invalid or computation fails.
  */
 export async function laplaceTransform(f) {
   validateFunction(f, 'Time-domain function');
 
   return async function(s) {
-    validateNumber(s, 'Complex frequency variable');
+    validateNumber(s, 'Complex frequency');
 
     try {
-      const integrand = (t) => Math.exp(-s * t) * f(t);
-      const upperLimit = 100; // Adjust based on the behavior of f(t)
-      const result = await math.integrate(integrand, 0, upperLimit);
+      const result = await numericalLaplaceTransform(f, s);
       logger.info('Laplace transform computed successfully');
       return result;
     } catch (error) {
@@ -87,10 +71,10 @@ export async function laplaceTransform(f) {
 }
 
 /**
- * Computes the inverse Laplace transform of a given function using the Talbot method.
+ * Computes the Inverse Laplace Transform of a function F(s) asynchronously.
  * @async
- * @param {Function} F - The Laplace-domain function to invert.
- * @returns {Function} - A function that computes the inverse Laplace transform for a given t.
+ * @param {Function} F - The Laplace-transformed function.
+ * @returns {Promise<Function>} - A promise that resolves to the inverse-transformed function f(t).
  * @throws {Error} If the input is invalid or computation fails.
  */
 export async function inverseLaplaceTransform(F) {
@@ -101,8 +85,7 @@ export async function inverseLaplaceTransform(F) {
 
     try {
       const M = 64; // Number of terms in the Talbot algorithm
-      const talbotMethod = new TalbotMethod(M);
-      const result = await talbotMethod.compute(F, t);
+      const result = await computeTalbotMethod(F, t, M);
       logger.info('Inverse Laplace transform computed successfully');
       return result;
     } catch (error) {
@@ -113,48 +96,50 @@ export async function inverseLaplaceTransform(F) {
 }
 
 /**
- * Implements the Talbot method for numerical inversion of Laplace transforms.
- * @class
- * @since 1.0.10
+ * Performs numerical integration for Laplace Transform.
+ * @async
+ * @param {Function} f - The function to transform
+ * @param {number} s - The complex frequency
+ * @returns {Promise<number>} The computed Laplace transform value
  */
-class TalbotMethod {
-  /**
-   * @param {number} M - Number of terms in the Talbot algorithm
-   */
-  constructor(M) {
-    this.M = M;
-    this.parallelComputation = new ParallelComputation();
+async function numericalLaplaceTransform(f, s) {
+  const integrationLimit = 100; // Adjust as needed
+  const steps = 1000; // Adjust for accuracy vs. performance
+  const dx = integrationLimit / steps;
+  let sum = 0;
+
+  for (let i = 0; i < steps; i++) {
+    const x = i * dx;
+    sum += f(x) * Math.exp(-s * x) * dx;
   }
 
-  /**
-   * Computes the inverse Laplace transform using the Talbot method.
-   * @async
-   * @param {Function} F - The Laplace-domain function to invert
-   * @param {number} t - The time variable
-   * @returns {Promise<number>} The computed inverse Laplace transform value
-   */
-  async compute(F, t) {
-    const r = 2 * this.M / (5 * t);
-    
-    const tasks = Array.from({ length: this.M }, (_, k) => async () => {
-      const theta = k * Math.PI / this.M;
-      const s = math.complex(
-        r * theta / Math.tan(theta),
-        r * theta
-      );
-      const z = math.multiply(t, s);
-      const dz = math.complex(
-        t * r / Math.pow(Math.sin(theta), 2),
-        t * r * (1 / Math.tan(theta) + theta)
-      );
-      return math.re(math.multiply(math.exp(z), F(s), dz));
-    });
-
-    const results = await this.parallelComputation.executeTasks(tasks);
-    const sum = results.reduce((acc, val) => acc + val, 0);
-
-    return math.divide(math.multiply(r, sum), 2 * Math.PI);
-  }
+  return sum;
 }
 
-export { laplaceTransform, inverseLaplaceTransform };
+/**
+ * Computes the inverse Laplace transform using the Talbot method.
+ * @async
+ * @param {Function} F - The Laplace-domain function to invert
+ * @param {number} t - The time variable
+ * @param {number} M - Number of terms in the Talbot algorithm
+ * @returns {Promise<number>} The computed inverse Laplace transform value
+ * @since 1.1.6
+ */
+async function computeTalbotMethod(F, t, M) {
+  const parallelComputation = new ParallelComputation();
+  const tasks = Array(M).fill().map((_, k) => async () => {
+    const theta = -Math.PI + (2 * k * Math.PI) / M;
+    const r = 1 / t * (0.5 * theta / Math.tan(0.5 * theta) + 0.5 * M);
+    const s = r * (Math.cos(theta) + math.complex(0, 1));
+    const Fs = await F(s);
+    return math.multiply(
+      1 / (2 * Math.PI * math.complex(0, 1)),
+      Math.exp(r * t),
+      Fs,
+      math.add(0.5 * theta / Math.sin(0.5 * theta), math.complex(0, 1))
+    );
+  });
+
+  const results = await parallelComputation.executeTasks(tasks);
+  return results.reduce((sum, value) => sum + value.re, 0);
+}

@@ -15,11 +15,11 @@
  * - Supports multiple fractal models and methods as defined in ModelSelector.
  */
 
-import { processFractalRequest, getModels, getMethods } from './services/fractalService.js';
-import { cacheClient } from './services/cacheService.js';
-import { dbClient } from './services/dbService.js';
-import logger from './utils/logger.js';
-import { validateParameters } from './utils/validation.js';
+import { processFractalRequest, getModels, getMethods } from './fractalService.js';
+import { cacheClient } from './cacheService.js';
+import { dbClient } from './dbService.js';
+import logger from '../utils/logger.js';
+import { validateParameters } from '../utils/validation.js';
 
 // Constants for resource management
 const MAX_CONCURRENT_REQUESTS = 5;
@@ -285,20 +285,4 @@ export function getAvailableModels() {
  */
 export function getAvailableMethods(model) {
   return getMethods(model);
-}
-
-export async function handleEdgeRequest(params) {
-  try {
-    const result = await processFractalRequest(params);
-    if (result.success) {
-      logger.info('Fractal generated successfully', { params });
-      return result.data;
-    } else {
-      logger.error('Error generating fractal', { message: result.message });
-      throw new Error(result.message);
-    }
-  } catch (error) {
-    logger.error('Edge request failed', { error });
-    throw error;
-  }
 }

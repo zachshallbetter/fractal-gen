@@ -45,29 +45,19 @@
  * @since 1.0.11
  */
 
-import { ladmSolver } from '../solvers/ladmSolver.js';
-import { stadmSolver } from '../solvers/stadmSolver.js';
-import { validateParameters, validateString } from '../utils/validation.js';
-import logger from '../utils/logger.js';
-import { rungeKuttaSolver } from '../solvers/rungeKuttaSolver.js';
-import { mhpmSolver } from '../solvers/mhpmSolver.js';
+import { selectSolver } from '../solvers/solverSelector.js';
+import { mandelbrot } from './mandelbrotModel.js';
 
 /**
  * Map of models to their available solvers.
+ * @type {Object.<string, Object.<string, Function>>}
+ * @since 1.0.12
  */
 const modelSolvers = {
-  fractionalSineGordon: {
-    LADM: ladmSolver,
-    STADM: stadmSolver,
-    MHPM: mhpmSolver, // Added MHPM method
-    RungeKutta: rungeKuttaSolver,
-    // ... other methods ...
+  mandelbrot: {
+    default: mandelbrot,
   },
-  advectionDiffusion: {
-    MHPM: mhpmSolver, // Added MHPM method
-    // ... other methods ...
-  },
-  // ... other models ...
+  // Add other models and solvers as needed
 };
 
 /**
@@ -75,49 +65,34 @@ const modelSolvers = {
  * @async
  * @param {Object} params - The parameters for fractal generation.
  * @param {string} params.model - The fractal model to use.
- * @param {string} params.method - The numerical method to apply.
+ * @param {string} [params.method] - The numerical method to apply.
  * @param {number} [params.alpha] - Fractional order (typically time-related).
  * @param {number} [params.beta] - Fractional order (typically space-related).
- * @param {number} [params.gamma] - Additional fractional dimension (model-specific).
  * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the fractal.
  * @throws {Error} If the model or method is not recognized, or if parameter validation fails.
  */
-async function generateFractalData(params) {
-  try {
-    validateParameters(params);
-    validateString(params.model, 'Model');
-    validateString(params.method, 'Method');
+export async function generateFractalData(params) {
+  const { model, method = 'default' } = params;
 
-    const { model, method } = params;
-
-    if (!modelSolvers[model]) {
-      throw new Error(`Model "${model}" is not supported.`);
-    }
-
-    const solver = modelSolvers[model][method];
-
-    if (!solver) {
-      throw new Error(`Method "${method}" is not available for model "${model}".`);
-    }
-
-    logger.info(`Generating fractal data using ${model} model with ${method} method`, { params });
-    const result = await solver(params);
-    logger.info(`Fractal data generation completed successfully`, { model, method });
-    return result;
-  } catch (error) {
-    logger.error('Error generating fractal data', error, { params });
-    throw error;
+  if (!modelSolvers[model]) {
+    throw new Error(`Model "${model}" is not supported.`);
   }
+
+  const solver = modelSolvers[model][method];
+
+  if (!solver) {
+    throw new Error(`Method "${method}" is not available for model "${model}".`);
+  }
+
+  return solver(params);
 }
 
 /**
  * Returns an array of available model names.
  * @returns {string[]} Array of model names.
  */
-function getAvailableModels() {
-  const models = Object.keys(modelSolvers);
-  logger.debug('Retrieved available models', { models });
-  return models;
+export function getAvailableModels() {
+  return Object.keys(modelSolvers);
 }
 
 /**
@@ -126,19 +101,9 @@ function getAvailableModels() {
  * @returns {string[]} Array of method names.
  * @throws {Error} If the model is not recognized.
  */
-function getAvailableMethods(model) {
-  try {
-    validateString(model, 'Model');
-    if (!modelSolvers[model]) {
-      throw new Error(`Model "${model}" not recognized or not available.`);
-    }
-    const methods = Object.keys(modelSolvers[model]);
-    logger.debug('Retrieved available methods for model', { model, methods });
-    return methods;
-  } catch (error) {
-    logger.error('Error retrieving available methods', error, { model });
-    throw error;
+export function getAvailableMethods(model) {
+  if (!modelSolvers[model]) {
+    throw new Error(`Model "${model}" is not recognized.`);
   }
+  return Object.keys(modelSolvers[model]);
 }
-
-export { generateFractalData, getAvailableModels, getAvailableMethods };

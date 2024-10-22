@@ -1,85 +1,98 @@
 /**
  * @module utils/reverseEngineering
- * @description Implements algorithms to infer the parameters from the generated fractal data.
- * This module integrates with the Logger module for improved error handling and logging.
+ * @description Implements algorithms to infer the parameters from the generated fractal data using inverse transforms and decomposition methods.
+ * This module provides functionality to reverse engineer fractal parameters by leveraging various mathematical techniques.
  * 
  * This module achieves its intent by:
- * - Implementing numerical optimization techniques to infer fractal parameters
- * - Utilizing nonlinear solvers for parameter estimation
- * - Integrating with the Logger module for comprehensive logging and error tracking
- * - Providing functions to reverse engineer parameters from fractal data
- * - Handling potential errors and edge cases in the reverse engineering process
- * - Offering extensibility for future enhancements in parameter inference algorithms
+ * - Implementing a reverse engineering process for fractal parameters
+ * - Utilizing inverse Shehu, Laplace transforms, and inverse Adomian decomposition
+ * - Supporting parallel computation for improved performance
+ * - Providing robust error handling and logging
+ * - Offering a flexible architecture for future enhancements and integrations with other solvers
  * 
  * @example
  * import { reverseEngineer } from './reverseEngineering.js';
- * import logger from './logger.js';
+ * const params = await reverseEngineer(fractalData);
  * 
- * const data = [{x: 1, y: 2}, {x: 2, y: 4}, {x: 3, y: 6}];
- * const initialGuess = {a: 1, b: 2};
- * 
- * try {
- *   const result = await reverseEngineer(data, initialGuess);
- *   logger.info('Reverse engineering result:', result);
- * } catch (error) {
- *   logger.error('Reverse engineering failed:', error);
- * }
- * 
- * @since 1.0.4
+ * @since 1.0.15
  */
 
-import { NonlinearSolver } from '../solvers/nonlinearSolver.js';
-import { LevenbergMarquardt } from '../solvers/levenbergMarquardt.js';
+import { math } from '../utils/mathUtils.js';
+import { inverseShehuTransform } from '../solvers/inverseShehuTransform.js';
+import { inverseLaplaceTransform } from '../solvers/inverseLaplaceTransform.js';
+import { reconstructNonlinearTerm } from '../solvers/inverseAdomianDecomposition.js';
+import { ParallelComputation } from './parallelComputation.js';
 import logger from './logger.js';
 
 /**
- * Infers the original parameters used to generate the fractal data.
+ * Reverse engineers the parameters of a fractal from given data using inverse transforms and decomposition methods.
  * @async
  * @function
- * @param {Array<{x: number, y: number}>} data - The generated fractal data.
- * @param {Object} initialGuess - Initial guess for the parameters.
- * @returns {Promise<Object>} - The inferred parameters.
+ * @param {Array<{x: number, y: number, value: number}>} data - The fractal data points.
+ * @returns {Promise<Object>} - The inferred parameters of the fractal.
+ * @throws {Error} If the reverse engineering process fails.
  */
-export async function reverseEngineer(data, initialGuess) {
-  logger.info('Starting reverse engineering process', { dataLength: data.length, initialGuess });
-
+async function reverseEngineer(data) {
   try {
-    const solver = new NonlinearSolver(new LevenbergMarquardt());
-    const objectiveFunction = (params) => {
-      return data.map(point => ({
-        x: point.x,
-        y: point.y,
-        residual: calculateResidual(point, params)
-      }));
-    };
+    logger.info('Starting reverse engineering process', { dataPoints: data.length });
 
-    const result = await solver.solve(objectiveFunction, initialGuess);
-    logger.info('Reverse engineering successful', { inferredParams: result.parameters });
-    return {
-      success: true,
-      inferredParams: result.parameters,
-      error: null
-    };
+    // Prepare data arrays
+    const xData = data.map(point => point.x);
+    const yData = data.map(point => point.y);
+    const valueData = data.map(point => point.value);
+
+    // Apply inverse Shehu transform
+    const shehuInverse = await inverseShehuTransform((s) => math.mean(valueData));
+    
+    // Apply inverse Laplace transform
+    const laplaceInverse = await inverseLaplaceTransform(shehuInverse);
+
+    // Reconstruct nonlinear term using inverse Adomian decomposition
+    const nonlinearTerm = await reconstructNonlinearTerm(data, 5);
+
+    // Infer parameters using the reconstructed functions
+    const params = await inferParameters(shehuInverse, laplaceInverse, nonlinearTerm, data);
+
+    logger.info('Reverse engineering completed successfully', { params });
+    return params;
   } catch (error) {
-    logger.error('Error in reverse engineering process', error, { initialGuess });
-    return {
-      success: false,
-      inferredParams: {},
-      error: error.message
-    };
+    logger.error('Error in reverse engineering process', error);
+    throw error;
   }
 }
 
 /**
- * Calculates the residual between the observed data point and the model prediction.
- * @param {{x: number, y: number}} point - The observed data point.
- * @param {Object} params - The current parameter estimates.
- * @returns {number} - The residual value.
+ * Infers the fractal parameters using the reconstructed functions.
+ * @async
+ * @function
+ * @param {Function} shehuInverse - The inverse Shehu transform function.
+ * @param {Function} laplaceInverse - The inverse Laplace transform function.
+ * @param {Function} nonlinearTerm - The reconstructed nonlinear term.
+ * @param {Array<{x: number, y: number, value: number}>} data - The original fractal data points.
+ * @returns {Promise<Object>} - The inferred parameters.
  */
-function calculateResidual(point, params) {
-  // This function should be implemented based on the specific fractal model
-  // For example, for a simple linear model: y = ax + b
-  const { x, y } = point;
-  const { a, b } = params;
-  return y - (a * x + b);
+export async function inferParameters(shehuInverse, laplaceInverse, nonlinearTerm, data) {
+  const parallelComputation = new ParallelComputation();
+
+  const tasks = data.map(point => async () => {
+    const shehuValue = await shehuInverse(point.x);
+    const laplaceValue = await laplaceInverse(point.y);
+    const nonlinearValue = nonlinearTerm(point.value);
+    return { shehuValue, laplaceValue, nonlinearValue };
+  });
+
+  const results = await parallelComputation.executeTasks(tasks);
+
+  // Analyze results to infer parameters
+  const shehuMean = math.mean(results.map(r => r.shehuValue));
+  const laplaceMean = math.mean(results.map(r => r.laplaceValue));
+  const nonlinearMean = math.mean(results.map(r => r.nonlinearValue));
+
+  return {
+    alpha: 1 / shehuMean, // Heuristic for alpha parameter
+    beta: 1 / laplaceMean, // Heuristic for beta parameter
+    nonlinearFactor: nonlinearMean,
+    initialCondition: math.max(data.map(p => p.value)),
+    fitQuality: 1 / (1 + math.std(results.map(r => r.nonlinearValue))) // Normalized fit quality metric
+  };
 }

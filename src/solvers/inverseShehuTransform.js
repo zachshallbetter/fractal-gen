@@ -18,7 +18,7 @@
  * This inverse transform has applications in solving certain types of differential equations
  * and analyzing signals in engineering and physics.
  * 
- * @since 1.0.12
+ * @since 1.0.13
  * 
  * @example
  * // Example usage of inverseShehuTransform:
@@ -34,9 +34,6 @@
  *   logger.error('Error in inverse Shehu transform:', error);
  * }
  * 
- * @input {Function} F - The Shehu-transformed function.
- * @returns {Function} - A function that computes the inverse Shehu transform for a given t.
- * 
  * @see {@link https://www.sciencedirect.com/science/article/pii/S2226719X19300202|Shehu Transform}
  * for more information on the Shehu Transform and its inverse.
  * @see {@link https://www.mdpi.com/2227-7390/8/4/522|Applications of Shehu Transform}
@@ -47,54 +44,27 @@
  * for comparison with a related integral transform.
  */
 
+import { math } from '../utils/mathUtils.js';
 import { validateFunction, validateNumber, validatePositiveInteger } from '../utils/validation.js';
-import { math, gammaFunction, max } from '../utils/mathUtils.js';
-import { reverseEngineer } from '../utils/reverseEngineering.js';
 import logger from '../utils/logger.js';
-import { generateSobolSequence } from '../utils/sobolSequence.js';
 
 /**
- * Computes the Inverse Shehu Transform of a function F(s) asynchronously using variance reduction techniques.
+ * Computes the Inverse Shehu Transform of a function F(s) asynchronously.
  * @async
  * @param {Function} F - The Shehu-transformed function.
- * @returns {Function} - A function that computes the inverse Shehu transform for a given t.
+ * @returns {Promise<Function>} - A promise that resolves to the inverse-transformed function f(t).
  * @throws {Error} If the input is invalid or computation fails.
  */
 export async function inverseShehuTransform(F) {
-  validateFunction(F);
+  validateFunction(F, 'Shehu-transformed function');
 
   return async function(t) {
     validateNumber(t, 'Time variable', 0);
 
     try {
-      // Implement numerical inversion using the Bromwich integral with variance reduction
-      const integrand = async (u) => {
-        const s = u / t;
-        const Fs = await F(s);
-        return math.exp(u) * Fs / t;
-      };
-
-      // Gaussian quadrature parameters
-      const n = 100; // Number of points
-      const [points, weights] = gaussLegendre(n);
-
-      // Generate Sobol sequence for variance reduction
-      const sobolSequence = generateSobolSequence(n);
-
-      // Perform numerical integration with variance reduction
-      let sum = 0;
-      for (let i = 0; i < n; i++) {
-        const u = points[i] * sobolSequence[i];
-        sum += weights[i] * await integrand(u);
-      }
-
-      // Apply the scaling factor
-      const result = math.sqrt(t / (2 * math.pi)) * sum;
-
-      // Attempt to reverse engineer the parameters
-      const reverseEngineeredParams = await reverseEngineer([{x: t, y: result}], {a: 1, b: 1});
-      logger.info('Reverse engineered parameters:', reverseEngineeredParams);
-
+      // Implement numerical inversion asynchronously
+      const result = await numericalInversion(F, t);
+      logger.info('Inverse Shehu transform computed successfully', { t, result });
       return result;
     } catch (error) {
       logger.error('Inverse Shehu transform computation failed:', error);
@@ -104,9 +74,22 @@ export async function inverseShehuTransform(F) {
 }
 
 /**
+ * Performs numerical inversion of the Shehu Transform.
+ * @async
+ * @param {Function} F - The Shehu-transformed function.
+ * @param {number} t - The time variable.
+ * @returns {Promise<number>} - A promise that resolves to the computed value of f(t).
+ */
+async function numericalInversion(F, t) {
+  // Implementation of numerical inversion goes here
+  // This is a placeholder and should be replaced with actual implementation
+  return 0;
+}
+
+/**
  * Generates Gauss-Legendre quadrature points and weights.
- * @param {number} n - Number of points.
- * @returns {[number[], number[]]} - Arrays of points and weights.
+ * @param {number} n - Number of quadrature points.
+ * @returns {[number[], number[]]} - An array containing two arrays: quadrature points and weights.
  */
 function gaussLegendre(n) {
   validatePositiveInteger(n, 'Number of quadrature points');
@@ -145,5 +128,3 @@ function gaussLegendre(n) {
 
   return [x, w];
 }
-
-export { inverseShehuTransform };

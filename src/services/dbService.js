@@ -12,6 +12,7 @@
  * - Automatic reconnection on connection loss
  * - Integration with CacheService for improved performance
  * - Optimized for use in edge runtime environments
+ * - Vercel KV integration for key-value storage
  * 
  * @example
  * import { dbClient } from './dbService.js';
@@ -25,12 +26,17 @@
  * // Perform a health check
  * const isHealthy = await dbClient.healthCheck();
  * 
- * @since 1.0.17
+ * // Use Vercel KV
+ * await dbClient.setKV('user_1_session', 'session_token_value');
+ * const session = await dbClient.getKV('user_1_session');
+ * 
+ * @since 1.0.18
  */
 
 import pg from 'pg';
-import logger from './utils/logger.js';
+import logger from '../utils/logger.js';
 import { cacheClient } from './cacheService.js';
+import { kv } from "@vercel/kv";
 
 const { Pool } = pg;
 
@@ -54,7 +60,7 @@ pool.on('error', (err, client) => {
 });
 
 /**
- * DatabaseClient class providing methods for interacting with the database.
+ * DatabaseClient class providing methods for interacting with the database and KV store.
  */
 class DatabaseClient {
   /**
@@ -91,6 +97,42 @@ class DatabaseClient {
       return res;
     } catch (error) {
       await logger.error('Error executing query', { text, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Sets a value in the Vercel KV store.
+   * @async
+   * @param {string} key - The key to set.
+   * @param {string} value - The value to set.
+   * @returns {Promise<void>}
+   * @throws {Error} If there's an issue setting the value.
+   */
+  async setKV(key, value) {
+    try {
+      await kv.set(key, value);
+      await logger.info('Set value in KV store', { key });
+    } catch (error) {
+      await logger.error('Error setting value in KV store', { key, error });
+      throw error;
+    }
+  }
+
+  /**
+   * Gets a value from the Vercel KV store.
+   * @async
+   * @param {string} key - The key to get.
+   * @returns {Promise<string|null>} The value from the KV store, or null if not found.
+   * @throws {Error} If there's an issue getting the value.
+   */
+  async getKV(key) {
+    try {
+      const value = await kv.get(key);
+      await logger.info('Got value from KV store', { key });
+      return value;
+    } catch (error) {
+      await logger.error('Error getting value from KV store', { key, error });
       throw error;
     }
   }
@@ -166,3 +208,19 @@ class DatabaseClient {
 }
 
 export const dbClient = new DatabaseClient();
+
+/**
+ * Fetches data from the database.
+ *
+ * @returns {Promise<any>} The data from the database.
+ * @since 1.0.1
+ */
+async function fetchData() {
+    try {
+        const data = await dbClient.query('SELECT * FROM fractals');
+        return data;
+    } catch (error) {
+        logger.error(error);
+        throw error;
+    }
+}

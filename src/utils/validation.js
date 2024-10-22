@@ -11,10 +11,10 @@
  * - Logs validation errors and successes for better observability
  * - Implements custom error types for more precise error handling
  * 
- * @since 1.1.1
+ * @since 1.1.2
  * 
  * @example
- * import { validateFunction, validateNumber, validateString, validateArray, validateParameters } from './validation.js';
+ * import { validateFunction, validateNumber, validateString, validateArray, validateParameters, validateObject } from './validation.js';
  * import logger from './logger.js';
  * 
  * try {
@@ -28,6 +28,7 @@
  *     maxTerms: 50,
  *     fractalType: 'Mandelbrot'
  *   });
+ *   validateObject({ key: 'value' }, 'Config object');
  *   logger.info('All validations passed successfully');
  * } catch (error) {
  *   logger.error('Validation error:', error);
@@ -133,14 +134,43 @@ class ValidationError extends Error {
   }
 }
 
-export {
-  ValidationError,
-  // Removed export of built-in RangeError
-};
+/**
+ * Validates if the input is an object.
+ * @param {*} value - The input to validate as an object.
+ * @param {string} [paramName='Object'] - The name of the object being validated.
+ * @throws {ValidationError} If the input is not an object or is null.
+ */
+export function validateObject(value, paramName = 'Object') {
+  if (typeof value !== 'object' || value === null) {
+    logger.error('Invalid input: not an object', { paramName, value });
+    throw new ValidationError(`${paramName} must be a non-null object`);
+  }
+  logger.debug(`${paramName} validated successfully`);
+}
 
-// Added missing exports for functions
-export {
-  validatePositiveInteger,
-  validatePositiveNumber,
-  validateObject,
-};
+/**
+ * @module utils/validation
+ * @description Provides functions to validate numerical solutions against analytical solutions.
+ * @since 1.0.1
+ */
+export function validateResults(numericalData, analyticalSolution, params) {
+  const errors = numericalData.map((point) => {
+    const analyticalValue = analyticalSolution(point.x, params);
+    return Math.abs(point.y - analyticalValue);
+  });
+
+  const maxError = Math.max(...errors);
+  console.log(`Maximum error between numerical and analytical solutions: ${maxError}`);
+}
+
+export function validatePositiveInteger(value, paramName) {
+  if (typeof value !== 'number' || value <= 0 || !Number.isInteger(value)) {
+    throw new Error(`${paramName} must be a positive integer`);
+  }
+}
+
+export function validatePositiveNumber(value, paramName) {
+  if (typeof value !== 'number' || value <= 0) {
+    throw new Error(`${paramName} must be a positive number`);
+  }
+}

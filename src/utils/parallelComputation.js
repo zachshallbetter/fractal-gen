@@ -3,12 +3,13 @@
  * @description Provides utility functions for parallel computation to optimize performance in numerical algorithms.
  * This module achieves its intent by:
  * - Implementing a ParallelComputation class for managing parallel tasks
- * - Utilizing Node.js worker threads for parallel processing
+ * - Utilizing Web Workers for parallel processing in browser environments
+ * - Utilizing Node.js worker threads for parallel processing in Node.js environments
  * - Providing methods for task distribution and result aggregation
  * - Implementing error handling and graceful degradation to sequential processing if parallel execution is unavailable
  * - Optimizing resource usage based on available system resources
  * 
- * @since 1.0.10
+ * @since 1.0.13
  * 
  * @example
  * // Example usage of ParallelComputation:
@@ -29,23 +30,34 @@
  *   logger.error('Error in parallel computation:', error);
  * }
  * 
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API|Web Workers API}
  * @see {@link https://nodejs.org/api/worker_threads.html|Node.js Worker Threads}
  */
 
 import os from 'os';
-import { Worker } from 'worker_threads';
 import logger from './logger.js';
+
+let Worker;
+let isNode = false;
+
+// Determine the environment and import the appropriate Worker implementation
+if (typeof window === 'undefined') {
+  isNode = true;
+  Worker = (await import('worker_threads')).Worker;
+} else {
+  Worker = window.Worker;
+}
 
 /**
  * Class for managing parallel computations.
  */
-class ParallelComputation {
+export class ParallelComputation {
   /**
    * Creates an instance of ParallelComputation.
-   * @param {number} [maxWorkers] - Maximum number of worker threads to use. Defaults to the number of CPU cores.
+   * @param {number} [maxWorkers] - Maximum number of worker threads to use. Defaults to the number of CPU cores or 4 for browsers.
    */
-  constructor(maxWorkers = os.cpus().length) {
-    this.maxWorkers = maxWorkers;
+  constructor(maxWorkers) {
+    this.maxWorkers = maxWorkers || (isNode ? os.cpus().length : navigator.hardwareConcurrency || 4);
     logger.info(`ParallelComputation initialized with ${this.maxWorkers} max workers`);
   }
 
@@ -92,7 +104,11 @@ class ParallelComputation {
    */
   _createWorkerPool(count) {
     logger.info(`Creating worker pool with ${count} workers`);
-    return Array.from({ length: count }, () => new Worker(`${__dirname}/worker.js`));
+    if (isNode) {
+      return Array.from({ length: count }, () => new Worker(`${__dirname}/worker.js`));
+    } else {
+      return Array.from({ length: count }, () => new Worker('worker.js'));
+    }
   }
 
   /**
@@ -106,14 +122,14 @@ class ParallelComputation {
   _executeTaskInWorker(worker, task) {
     return new Promise((resolve, reject) => {
       worker.postMessage({ task: task.toString() });
-      worker.once('message', (result) => {
+      worker.onmessage = (event) => {
         logger.info('Task completed successfully in worker');
-        resolve(result);
-      });
-      worker.once('error', (error) => {
+        resolve(event.data);
+      };
+      worker.onerror = (error) => {
         logger.error('Error in worker execution', error);
         reject(error);
-      });
+      };
     });
   }
 
@@ -125,8 +141,7 @@ class ParallelComputation {
    */
   async _terminateWorkers(workerPool) {
     logger.info(`Terminating ${workerPool.length} workers`);
-    await Promise.all(workerPool.map(worker => worker.terminate()));
+    const terminationPromises = workerPool.map(worker => worker.terminate());
+    await Promise.all(terminationPromises);
   }
 }
-
-export { ParallelComputation };

@@ -10,12 +10,16 @@
  * - Increment and decrement operations for numeric values
  * - Pattern-based key retrieval
  * - Error handling and logging for improved observability
+ * - Integration with Upstash Redis for edge-optimized caching
  * 
- * @since 1.0.15
+ * @since 1.0.16
  */
 
-import { kv } from '@vercel/kv';
-import { logger } from './utils/logger.js';
+import { logger } from '../utils/logger.js';
+import { dbClient } from './dbService.js';
+
+const UPSTASH_URL = 'https://moving-wren-41860.upstash.io';
+const UPSTASH_TOKEN = 'AaOEAAIjcDFkMDk2M2VkMmFkOGY0MWI0YmM1NTg0MTBhZWQ1MGJjNXAxMA';
 
 /**
  * CacheClient class providing methods for interacting with the cache.
@@ -32,12 +36,14 @@ class CacheClient {
    */
   async set(key, value, expiration) {
     try {
-      if (expiration) {
-        await kv.set(key, value, { ex: expiration });
-      } else {
-        await kv.set(key, value);
-      }
-      logger.info(`Cache set: ${key}`);
+      const url = `${UPSTASH_URL}/set/${key}/${value}${expiration ? `/EX/${expiration}` : ''}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${UPSTASH_TOKEN}`
+        }
+      });
+      const data = await response.json();
+      logger.info(`Cache set: ${key}`, data);
     } catch (error) {
       logger.error('Error setting cache:', error);
       throw error;
@@ -53,9 +59,15 @@ class CacheClient {
    */
   async get(key) {
     try {
-      const value = await kv.get(key);
-      logger.info(`Cache ${value ? 'hit' : 'miss'}: ${key}`);
-      return value;
+      const url = `${UPSTASH_URL}/get/${key}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${UPSTASH_TOKEN}`
+        }
+      });
+      const data = await response.json();
+      logger.info(`Cache ${data.result ? 'hit' : 'miss'}: ${key}`);
+      return data.result;
     } catch (error) {
       logger.error('Error getting from cache:', error);
       throw error;
@@ -71,8 +83,14 @@ class CacheClient {
    */
   async del(key) {
     try {
-      await kv.del(key);
-      logger.info(`Cache delete: ${key}`);
+      const url = `${UPSTASH_URL}/del/${key}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${UPSTASH_TOKEN}`
+        }
+      });
+      const data = await response.json();
+      logger.info(`Cache delete: ${key}`, data);
     } catch (error) {
       logger.error('Error deleting from cache:', error);
       throw error;
@@ -88,9 +106,15 @@ class CacheClient {
    */
   async incr(key) {
     try {
-      const newValue = await kv.incr(key);
-      logger.info(`Cache increment: ${key}, new value: ${newValue}`);
-      return newValue;
+      const url = `${UPSTASH_URL}/incr/${key}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${UPSTASH_TOKEN}`
+        }
+      });
+      const data = await response.json();
+      logger.info(`Cache increment: ${key}, new value: ${data.result}`);
+      return data.result;
     } catch (error) {
       logger.error('Error incrementing cache:', error);
       throw error;
@@ -106,9 +130,15 @@ class CacheClient {
    */
   async decr(key) {
     try {
-      const newValue = await kv.decr(key);
-      logger.info(`Cache decrement: ${key}, new value: ${newValue}`);
-      return newValue;
+      const url = `${UPSTASH_URL}/decr/${key}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${UPSTASH_TOKEN}`
+        }
+      });
+      const data = await response.json();
+      logger.info(`Cache decrement: ${key}, new value: ${data.result}`);
+      return data.result;
     } catch (error) {
       logger.error('Error decrementing cache:', error);
       throw error;
@@ -124,9 +154,15 @@ class CacheClient {
    */
   async keys(pattern) {
     try {
-      const keys = await kv.keys(pattern);
-      logger.info(`Cache keys retrieved for pattern: ${pattern}`);
-      return keys;
+      const url = `${UPSTASH_URL}/keys/${pattern}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${UPSTASH_TOKEN}`
+        }
+      });
+      const data = await response.json();
+      logger.info(`Cache keys retrieved for pattern: ${pattern}`, data);
+      return data.result;
     } catch (error) {
       logger.error('Error retrieving cache keys:', error);
       throw error;
@@ -141,7 +177,7 @@ class CacheClient {
    */
   async quit() {
     try {
-      // Note: @vercel/kv doesn't require an explicit connection close
+      // Note: Upstash Redis doesn't require an explicit connection close
       logger.info('KV connection closed');
     } catch (error) {
       logger.error('Error closing KV connection:', error);
