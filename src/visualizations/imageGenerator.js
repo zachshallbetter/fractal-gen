@@ -12,18 +12,15 @@
  */
 
 const { createCanvas } = require('canvas');
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs').promises;
 
-function createFractalImage(data) {
-  const width = 800;
-  const height = 600;
-  const canvas = createCanvas(width, height);
+async function createFractalImage(data) {
+  const canvas = createCanvas(800, 600);
   const ctx = canvas.getContext('2d');
 
   // Draw background
   ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, 800, 600);
 
   // Scale data
   const maxX = Math.max(...data.map(point => point.x));
@@ -32,14 +29,15 @@ function createFractalImage(data) {
   // Draw fractal data points
   ctx.fillStyle = 'white';
   data.forEach(point => {
-    const x = (point.x / maxX) * width;
-    const y = height - (point.y / maxY) * height;
+    const x = (point.x / maxX) * 800;
+    const y = 600 - (point.y / maxY) * 600;
     ctx.fillRect(x, y, 2, 2);
   });
 
   // Save image
   const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync(path.join('images', 'fractal.png'), buffer);
+  await fs.writeFile('path/to/save/fractal.png', buffer);
+  console.log('Fractal image saved successfully.');
 }
 
 module.exports = { createFractalImage };

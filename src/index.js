@@ -15,7 +15,7 @@ const { reverseEngineer } = require('./utils/reverseEngineering');
 (async function main() {
   try {
     // Parse user inputs
-    const params = parseInputs();
+    const params = await parseInputs();
 
     // Generate fractal data based on selected model and method
     const data = await generateFractalData(params);
@@ -32,6 +32,3 @@ const { reverseEngineer } = require('./utils/reverseEngineering');
     console.error('An error occurred:', error);
   }
 })();
-
-// Start the web server
-require('./server');

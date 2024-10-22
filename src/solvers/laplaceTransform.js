@@ -42,47 +42,74 @@
  *   console.error('Validation error:', error.message);
  * }
  */
-
 const math = require('mathjs');
+const { validateFunction, validateNumber } = require('../utils/validators');
+const { ParallelComputation } = require('../utils/parallelComputation');
 
 /**
  * Computes the Laplace transform of a given function.
+ * @async
  * @param {Function} f - The time-domain function to transform.
- * @param {number} s - The complex frequency variable.
- * @returns {number} - The Laplace transform evaluated at s.
+ * @returns {Function} - A function that computes the Laplace transform for a given s.
+ * @throws {Error} If the input is invalid or computation fails.
  */
-function laplaceTransform(f, s) {
-  // Placeholder for numerical integration method
-  const integrationMethod = 'trapezoidal'; // Example: Trapezoidal rule
-  return numericalIntegration(f, s, integrationMethod);
+async function laplaceTransform(f) {
+  validateFunction(f);
+
+  return async function(s) {
+    validateNumber(s, 'Complex frequency variable');
+
+    try {
+      const integrationMethod = new AdaptiveQuadrature();
+      return await integrationMethod.compute(t => f(t) * Math.exp(-s * t), 0, Infinity);
+    } catch (error) {
+      throw new Error(`Laplace transform computation failed: ${error.message}`);
+    }
+  };
 }
 
 /**
  * Computes the inverse Laplace transform of a given function.
+ * @async
  * @param {Function} F - The Laplace-domain function to invert.
- * @param {number} t - The time variable.
- * @returns {number} - The inverse Laplace transform evaluated at t.
+ * @returns {Function} - A function that computes the inverse Laplace transform for a given t.
+ * @throws {Error} If the input is invalid or computation fails.
  */
-function inverseLaplaceTransform(F, t) {
-  // Placeholder for numerical inversion method
-  const inversionMethod = 'numericalInversion'; // Example: Numerical inversion technique
-  return numericalInversion(F, t, inversionMethod);
+async function inverseLaplaceTransform(F) {
+  validateFunction(F);
+
+  return async function(t) {
+    validateNumber(t, 'Time variable');
+
+    try {
+      const inversionMethod = new StehfestAlgorithm();
+      return await inversionMethod.compute(F, t);
+    } catch (error) {
+      throw new Error(`Inverse Laplace transform computation failed: ${error.message}`);
+    }
+  };
 }
 
 /**
- * Numerical integration placeholder function.
+ * Implements the adaptive quadrature method for numerical integration.
+ * @class
  */
-function numericalIntegration(f, s, method) {
-  // Implement the actual numerical integration here
-  return math.integrate(f, 0, math.inf, s);
+class AdaptiveQuadrature {
+  async compute(f, a, b, tolerance = 1e-10) {
+    // Implementation of adaptive quadrature algorithm
+    // This is a placeholder and should be replaced with actual implementation
+  }
 }
 
 /**
- * Numerical inversion placeholder function.
+ * Implements the Stehfest algorithm for numerical inversion of Laplace transforms.
+ * @class
  */
-function numericalInversion(F, t, method) {
-  // Implement the actual numerical inversion here
-  return math.inverseLaplace(F, t);
+class StehfestAlgorithm {
+  async compute(F, t, N = 16) {
+    // Implementation of Stehfest algorithm
+    // This is a placeholder and should be replaced with actual implementation
+  }
 }
 
 module.exports = { laplaceTransform, inverseLaplaceTransform };

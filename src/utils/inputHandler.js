@@ -3,24 +3,47 @@
  * @description Parses and validates user inputs from command-line arguments using yargs.
  * Ensures comprehensive parameter definition and documentation for all models and methods.
  * Optimized to prevent blocking operations and validate inputs effectively.
- * @since 1.0.3
+ * Integrates with validation, parallel computation, output handling, and model selection modules.
+ * 
+ * - Handles input parsing and validation for various fractal generation models and methods
+ * - Supports command-line arguments for model selection, method choice, and parameter configuration
+ * - Integrates with other utility modules for comprehensive input processing and error handling
+ * - Provides extensible architecture for adding new models and methods in the future
+ * 
+ * @example
+ * const { parseInputs } = require('./inputHandler');
+ * const inputs = await parseInputs();
+ * 
+ * @since 1.0.6
  */
 
-const yargs = require('yargs');
+import yargs from 'yargs';
+import { validateNumber, validateRange, validatePositiveInteger } from './validators.js';
+import { ParallelComputation } from './parallelComputation.js';
+import { outputResults } from './outputHandler.js';
+import { generateFractalData, getAvailableModels, getAvailableMethods } from '../models/modelSelector.js';
 
-function parseInputs() {
-  const argv = yargs
+/**
+ * Parses and validates command-line arguments.
+ * @returns {Promise<Object>} Parsed and validated arguments.
+ * @throws {Error} If input validation fails.
+ */
+async function parseInputs() {
+  const availableModels = await getAvailableModels();
+  const availableMethods = await getAvailableMethods();
+
+  const argv = await yargs
     .usage('Usage: $0 [options]')
     .option('model', {
       alias: 'm',
       describe: 'Select the mathematical model to use',
-      choices: ['twoScale', 'interpersonal', 'advectionDiffusion', 'fractionalSineGordon'],
+      choices: availableModels,
       default: 'twoScale',
     })
     .option('method', {
       alias: 'M',
       describe: 'Select the method for solving the equation (applicable to specific models)',
-      choices: ['LADM', 'STADM'],
+      choices: availableMethods,
     })
     .option('alpha', {
       alias: 'a',
@@ -76,16 +99,24 @@ function parseInputs() {
       type: 'boolean',
       default: false,
     })
+    .option('parallelComputation', {
+      alias: 'p',
+      describe: 'Enable parallel computation',
+      type: 'boolean',
+      default: false,
+    })
     .check((argv) => {
-      // Input validation
-      if (argv.alpha <= 0 || argv.alpha > 1) {
-        throw new Error('Alpha must be between 0 and 1.');
-      }
-      if (argv.beta <= 0 || argv.beta > 1) {
-        throw new Error('Beta must be between 0 and 1.');
-      }
-      if (argv.timeSteps <= 0) {
-        throw new Error('Time steps must be a positive integer.');
+      // Input validation using validators
+      try {
+        validateRange(argv.alpha, 0, 1, 'Alpha');
+        validateRange(argv.beta, 0, 1, 'Beta');
+        validateRange(argv.gamma, 0, 1, 'Gamma');
+        validatePositiveInteger(argv.maxTerms, 'Max Terms');
+        validateNumber(argv.initialCondition, 'Initial Condition');
+        validatePositiveInteger(argv.timeEnd, 'Time End');
+        validatePositiveInteger(argv.timeSteps, 'Time Steps');
+      } catch (error) {
+        throw new Error(`Input validation failed: ${error.message}`);
       }
       return true;
     })
@@ -96,4 +127,21 @@ function parseInputs() {
   return argv;
 }
 
-module.exports = { parseInputs };
+/**
+ * Processes inputs and generates fractal data.
+ * @param {Object} inputs - Parsed command-line arguments.
+ * @returns {Promise<Object>} Generated fractal data.
+ */
+async function processInputs(inputs) {
+  let data;
+  if (inputs.parallelComputation) {
+    const parallelComputation = new ParallelComputation();
+    [data] = await parallelComputation.executeTasks([() => generateFractalData(inputs)]);
+  } else {
+    data = await generateFractalData(inputs);
+  }
+  await outputResults(data, inputs);
+  return data;
+}
+
+export { parseInputs, processInputs };

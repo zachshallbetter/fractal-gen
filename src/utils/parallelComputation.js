@@ -3,26 +3,33 @@
  * @description Provides utility functions for parallel computation to optimize performance in numerical algorithms.
  * This module achieves its intent by:
  * - Implementing a ParallelComputation class for managing parallel tasks
- * - Utilizing Web Workers or Node.js worker threads for parallel processing
+ * - Utilizing Node.js worker threads for parallel processing
  * - Providing methods for task distribution and result aggregation
  * - Implementing error handling and graceful degradation to sequential processing if parallel execution is unavailable
+ * - Optimizing resource usage based on available system resources
  * 
- * @since 1.0.6
+ * @since 1.0.7
  * 
  * @example
  * // Example usage of ParallelComputation:
+ * import { ParallelComputation } from './parallelComputation.js';
+ * 
  * const parallelComputation = new ParallelComputation();
  * const tasks = [
  *   () => heavyComputation(1),
  *   () => heavyComputation(2),
  *   () => heavyComputation(3)
  * ];
+ * 
  * try {
  *   const results = await parallelComputation.executeTasks(tasks);
  *   console.log('Parallel computation results:', results);
  * } catch (error) {
  *   console.error('Error in parallel computation:', error.message);
  * }
+ * 
+ * @see {@link https://nodejs.org/api/worker_threads.html|Node.js Worker Threads}
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API|Web Workers API}
  */
 
 const os = require('os');

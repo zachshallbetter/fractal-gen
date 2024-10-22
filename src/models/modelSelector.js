@@ -14,12 +14,12 @@
  * allowing for easy integration of new models and maintaining a consistent API for fractal data generation.
  */
 
-const twoScaleModel = require('./twoScaleModel');
-const interpersonalModel = require('./interpersonalRelationshipsModel');
-const advectionDiffusionModel = require('./advectionDiffusionReactionModel');
-const { solve: fractionalSineGordonSolve } = require('./fractionalSineGordonModel');
-const { rungeKuttaSolver } = require('../solvers/rungeKuttaSolver');
-const { grunwaldLetnikovSolver } = require('../solvers/fractionalSolver');
+const modelMap = {
+  twoScale: require('./twoScaleModel'),
+  interpersonal: require('./interpersonalRelationshipsModel'),
+  advectionDiffusion: require('./advectionDiffusionReactionModel'),
+  fractionalSineGordon: require('./fractionalSineGordonModel')
+};
 
 /**
  * Generates fractal data using the selected model.
@@ -28,27 +28,16 @@ const { grunwaldLetnikovSolver } = require('../solvers/fractionalSolver');
  * @throws {Error} If the model is not recognized or if required parameters are missing.
  */
 async function generateFractalData(params) {
-  if (!params.model) {
-    throw new Error('Model parameter is required.');
+  const { model } = params;
+  if (!modelMap[model]) {
+    throw new Error(`Model "${model}" not recognized or not available.`);
   }
 
   try {
-    switch (params.model) {
-      case 'twoScale':
-        return await twoScaleModel.solve(params);
-      case 'interpersonal':
-        return await interpersonalModel.solve(params);
-      case 'advectionDiffusion':
-        return await advectionDiffusionModel.solve(params);
-      case 'fractionalSineGordon':
-        return await fractionalSineGordonSolve(params);
-      // Add other models and solvers as needed
-      default:
-        throw new Error(`Model "${params.model}" not recognized.`);
-    }
+    return await modelMap[model].solve(params);
   } catch (error) {
-    console.error(`Error in generateFractalData: ${error.message}`);
-    throw error;
+    console.error(`Error executing model ${model}:`, error);
+    throw new Error(`Execution failed for model ${model}: ${error.message}`);
   }
 }
 

@@ -6,60 +6,22 @@
  * @since 1.0.1
  */
 
-const { solveFractionalSineGordon } = require('./models/fractionalSineGordonModel');
+const { generateFractalData } = require('./models/modelSelector');
 
 /**
- * Generates fractal data based on the provided parameters.
+ * Processes fractal request and generates fractal data.
  * @param {Object} params - Fractal generation parameters
- * @returns {Promise} - Resolves with fractal data
+ * @returns {Promise} - Resolves with fractal data or rejects with error
  */
-function generateFractalData(params) {
-  return new Promise((resolve, reject) => {
-    let modelResult;
-
-    switch (params.model) {
-      case 'fractionalSineGordon':
-        modelResult = solveFractionalSineGordon(params);
-        break;
-      // ... existing code ...
-      default:
-        return reject(new Error('Invalid model specified'));
-    }
-
-    // Process the result to prepare data for visualization
-    const fractalData = processModelResult(modelResult);
-
-    resolve(fractalData);
-  });
+async function processFractalRequest(params) {
+  try {
+    const data = await generateFractalData(params);
+    console.log('Fractal generation successful.');
+    return data;
+  } catch (error) {
+    console.error('Failed to generate fractal data:', error);
+    throw error;
+  }
 }
 
-/**
- * Processes model result into fractal data suitable for visualization.
- * @param {Array} modelResult - Result from the model solver
- * @returns {Object} - Fractal data for visualization
- */
-function processModelResult(modelResult) {
-  const data = {
-    points: []
-  };
-
-  // Example processing (placeholder logic)
-  modelResult.forEach(point => {
-    data.points.push({
-      x: point.x,
-      y: point.y,
-      color: {
-        r: 255 * Math.abs(Math.sin(point.value)),
-        g: 255 * Math.abs(Math.cos(point.value)),
-        b: 255 * Math.abs(Math.sin(point.value)),
-        a: 1
-      }
-    });
-  });
-
-  return data;
-}
-
-module.exports = {
-  generateFractalData
-};
+export { processFractalRequest };

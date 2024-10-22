@@ -5,7 +5,7 @@
  */
 
 const { createCanvas } = require('canvas');
-const fs = require('fs');
+const fs = require('fs').promises;  // Use promise-based fs module
 const path = require('path');
 
 async function createInteractivePlot(data) {
@@ -43,8 +43,7 @@ async function createInteractivePlot(data) {
   // Save image
   const imagePath = path.join('plots', 'fractalPlot.png');
   const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync(imagePath, buffer);
-
+  await fs.writeFile(imagePath, buffer);
   console.log(`Plot image saved to ${imagePath}.`);
 }
 
