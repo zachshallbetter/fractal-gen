@@ -1,8 +1,22 @@
 /**
  * @module solvers/hesFractionalDerivative
- * @description Computes He’s fractional derivative using numerical approximation.
- * @since 1.0.1
+ * @description Computes He's fractional derivative using numerical approximation.
+ * This module achieves its intent by:
+ * - Implementing the hesFractionalDerivative function asynchronously
+ * - Utilizing numerical approximation techniques for fractional derivatives
+ * - Preventing blocking operations through asynchronous implementation
  * 
+ * @since 1.0.2
+ * 
+ * @example
+ * // Example usage of hesFractionalDerivative:
+ * const yFunc = (t) => Math.exp(t);
+ * const alpha = 0.5;
+ * const t = 1;
+ * const result = await hesFractionalDerivative(yFunc, alpha, t);
+ * 
+ * @see {@link https://www.sciencedirect.com/science/article/pii/S0960077903005534|He's fractional derivative and its applications}
+ * for more information on He's fractional derivative.
  */
 
 const math = require('mathjs');

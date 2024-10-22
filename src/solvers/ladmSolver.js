@@ -1,8 +1,25 @@
 /**
  * @module solvers/ladmSolver
  * @description Solves the fractional Sine-Gordon equation using a simplified numerical method (Euler method).
- * Optimized for non-blocking and efficient computation.
- * @since 1.0.6
+ * This module achieves its intent by:
+ * - Implementing the ladmSolver function using the Euler method
+ * - Optimizing for non-blocking and efficient computation
+ * - Providing a numerical solution to the fractional Sine-Gordon equation
+ * 
+ * @since 1.0.7
+ * 
+ * @example
+ * // Example usage of the ladmSolver function:
+ * const params = {
+ *   initialCondition: 0,
+ *   timeEnd: 10,
+ *   timeSteps: 1000
+ * };
+ * const solution = await ladmSolver(params);
+ * const u_at_t5 = solution(5); // Get the solution at t = 5
+ * 
+ * @see {@link https://en.wikipedia.org/wiki/Sine-Gordon_equation|Sine-Gordon equation} for more information on the equation being solved.
+ * @see {@link https://en.wikipedia.org/wiki/Euler_method|Euler method} for details on the numerical method used.
  */
 
 const math = require('mathjs');
