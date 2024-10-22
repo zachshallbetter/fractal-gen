@@ -4,13 +4,14 @@
  * @description Orchestrates input parsing, fractal data generation, output handling, and reverse engineering.
  * Utilizes advanced mathematical models and methods to generate fractals and analyze them.
  * Optimized for non-blocking, performant execution suitable for edge computing environments.
- * @since 1.0.7
+ * @since 1.0.8
  */
 
 import { parseInputs, processInputs } from './utils/inputHandler.js';
 import { startServer } from './server.js';
 import { outputResults } from './utils/outputHandler.js';
 import logger from './utils/logger.js';
+import { validateParameters } from './utils/validation.js';
 
 /**
  * Main function to execute the Fractal Generator application.
@@ -24,6 +25,9 @@ async function main() {
 
     // Parse user inputs
     const params = parseInputs();
+
+    // Validate parameters
+    validateParameters(params);
 
     // Process inputs and generate fractal data
     const fractalData = await processInputs(params);

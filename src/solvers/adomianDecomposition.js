@@ -163,4 +163,65 @@ async function solveLADM(params) {
   }
 }
 
-export { generateAdomianPolynomials, solveLADM };
+/**
+ * Demonstrates an antipattern in Adomian Decomposition Method implementation.
+ * This function is intentionally inefficient and should not be used in production.
+ * @async
+ * @param {Object} params - Solver parameters (same as solveLADM)
+ * @returns {Promise<Object>} - Solution data
+ * @since 1.0.11
+ */
+async function antipatternADM(params) {
+  try {
+    // Intentionally skipping validation for demonstration purposes
+    logger.warn('Starting antipattern ADM solver - This is not optimized and should not be used in production');
+
+    const solutionData = [];
+    const dt = params.timeEnd / params.timeSteps;
+    const dx = params.spaceEnd / params.spaceSteps;
+
+    // Inefficient nested loop structure
+    for (let i = 0; i <= params.timeSteps; i++) {
+      for (let j = 0; j <= params.spaceSteps; j++) {
+        const t = i * dt;
+        const x = j * dx;
+        let value = params.initialCondition(t);
+
+        // Recalculating polynomials for each point, which is highly inefficient
+        for (let k = 0; k < params.maxTerms; k++) {
+          const polynomial = await (async () => {
+            let sum = 0;
+            for (let m = 0; m <= k; m++) {
+              const coefficient = combination(k, m);
+              sum += coefficient * params.nonlinearTerm(value);
+            }
+            return (1 / factorial(k)) * sum;
+          })();
+
+          value += polynomial * Math.pow(x, params.beta * k) / factorial(k);
+        }
+
+        solutionData.push({ x, y: t, value });
+
+        // Unnecessary delay to simulate poor performance
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+    }
+
+    logger.warn('Antipattern ADM solution computed - This method is intentionally inefficient');
+    return {
+      success: true,
+      data: solutionData,
+      message: 'Antipattern ADM solution computed. Do not use this method in production.'
+    };
+  } catch (error) {
+    logger.error('Error in antipattern ADM solver', error);
+    return {
+      success: false,
+      data: null,
+      message: `Error in antipattern ADM solver: ${error.message}`
+    };
+  }
+}
+
+export { generateAdomianPolynomials, solveLADM, antipatternADM };

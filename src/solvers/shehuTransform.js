@@ -61,7 +61,7 @@
  * for examples of Shehu Transform applications in differential equations and variance reduction techniques.
  */
 
-import { validateFunction, validateNumber } from '../utils/validation.js';
+import { validateFunction, validateNumber, validatePositiveInteger } from '../utils/validation.js';
 import { exp, sin, cos, sqrt, PI } from '../utils/mathUtils.js';
 import logger from '../utils/logger.js';
 import { generateSobolSequence } from '../utils/sobolSequence.js';
@@ -156,18 +156,44 @@ export async function inverseShehuTransform(F) {
 /**
  * Generates Gauss-Legendre quadrature points and weights.
  * @param {number} n - Number of points.
- * @returns {[number[], number[]]} - Array of points and weights.
+ * @returns {[number[], number[]]} - Arrays of points and weights.
  */
 function gaussLegendre(n) {
-  // Implementation of Gauss-Legendre quadrature
-  // This is a placeholder and should be replaced with an actual implementation
-  const points = [];
-  const weights = [];
-  for (let i = 0; i < n; i++) {
-    points.push(cos((2 * i + 1) * PI / (2 * n)));
-    weights.push(PI / n);
+  validatePositiveInteger(n, 'Number of quadrature points');
+
+  const EPSILON = 1e-14;
+  const m = Math.floor((n + 1) / 2);
+  const x = [];
+  const w = [];
+
+  for (let i = 1; i <= m; i++) {
+    let z = Math.cos(Math.PI * (i - 0.25) / (n + 0.5));
+    let z1 = 0;
+    let iteration = 0;
+
+    while (Math.abs(z - z1) > EPSILON && iteration < 100) {
+      iteration++;
+      let p1 = 1;
+      let p2 = 0;
+
+      for (let j = 1; j <= n; j++) {
+        const p3 = p2;
+        p2 = p1;
+        p1 = ((2 * j - 1) * z * p2 - (j - 1) * p3) / j;
+      }
+
+      const pp = (n * (z * p1 - p2)) / (z * z - 1);
+      z1 = z;
+      z = z1 - p1 / pp;
+    }
+
+    x[i - 1] = -z;
+    x[n - i] = z;
+    w[i - 1] = (2 / ((1 - z * z) * Math.pow(pp, 2)));
+    w[n - i] = w[i - 1];
   }
-  return [points, weights];
+
+  return [x, w];
 }
 
 export { shehuTransform, inverseShehuTransform };

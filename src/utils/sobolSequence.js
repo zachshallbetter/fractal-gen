@@ -89,9 +89,10 @@ function computeDirectionVector(directionNumbers) {
  * @returns {number[]} - A single point in the Sobol sequence.
  */
 function generateSobolPoint(index, directionVectors) {
-  return directionVectors.map(vector => {
+  return directionVectors.map((vector) => {
     let x = 0;
-    for (let i = 0; i < 32; i++) {
+    const dimensionBits = vector.length;
+    for (let i = 0; i < dimensionBits; i++) {
       if ((index & (1 << i)) !== 0) {
         x ^= vector[i];
       }
@@ -109,8 +110,8 @@ function generateSobolPoint(index, directionVectors) {
 export function scrambleSobolSequence(sequence) {
   try {
     logger.info('Scrambling Sobol sequence', { sequenceLength: sequence.length });
-    const scrambledSequence = sequence.map(point => 
-      point.map(value => mod(value + math.random(), 1))
+    const scrambledSequence = sequence.map((point) =>
+      point.map((value) => mod(value + Math.random(), 1))
     );
     logger.info('Sobol sequence scrambled successfully');
     return scrambledSequence;

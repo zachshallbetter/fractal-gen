@@ -4,22 +4,30 @@
  * This module is crucial for ensuring the integrity and correctness of inputs across various mathematical operations and transformations.
  * It integrates with the Logger module for improved error handling and logging.
  * 
+ * Key features:
  * - Validates input parameters for fractal generation and other mathematical operations
  * - Validates numerical solutions against analytical solutions
  * - Validates various data types such as functions, numbers, strings, and arrays
  * - Logs validation errors and successes for better observability
+ * - Implements custom error types for more precise error handling
  * 
- * @since 1.1.0
+ * @since 1.1.1
  * 
  * @example
- * import { validateFunction, validateNumber, validateString, validateArray } from './validation.js';
+ * import { validateFunction, validateNumber, validateString, validateArray, validateParameters } from './validation.js';
  * import logger from './logger.js';
  * 
  * try {
- *   validateFunction((x) => x * 2);
+ *   validateFunction((x) => x * 2, 'Double function');
  *   validateNumber(5, 'Input parameter', 0, 10);
  *   validateString('Sierpinski', 'Fractal Type');
  *   validateArray([1, 2, 3], 'Data points', 2);
+ *   validateParameters({
+ *     alpha: 0.5,
+ *     beta: 0.3,
+ *     maxTerms: 50,
+ *     fractalType: 'Mandelbrot'
+ *   });
  *   logger.info('All validations passed successfully');
  * } catch (error) {
  *   logger.error('Validation error:', error);
@@ -31,14 +39,15 @@ import logger from './logger.js';
 /**
  * Validates if the input is a function.
  * @param {*} func - The input to validate as a function.
+ * @param {string} [paramName='Function'] - The name of the function being validated.
  * @throws {TypeError} If the input is not a function.
  */
-function validateFunction(func) {
+export function validateFunction(func, paramName = 'Function') {
   if (typeof func !== 'function') {
-    logger.error('Invalid input: not a function', { input: func });
-    throw new TypeError('Input must be a function');
+    logger.error('Invalid input: not a function', { paramName, input: func });
+    throw new TypeError(`${paramName} must be a function`);
   }
-  logger.debug('Function validated successfully');
+  logger.debug(`${paramName} validated successfully`);
 }
 
 /**
@@ -49,7 +58,7 @@ function validateFunction(func) {
  * @param {number} [max=Number.MAX_SAFE_INTEGER] - Maximum allowed value.
  * @throws {ValidationError} If the input is not a valid number or out of range.
  */
-function validateNumber(value, paramName = 'Parameter', min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER) {
+export function validateNumber(value, paramName = 'Parameter', min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER) {
   if (typeof value !== 'number' || isNaN(value)) {
     logger.error('Invalid input: not a number', { paramName, value });
     throw new ValidationError(`${paramName} must be a valid number`);
@@ -62,40 +71,12 @@ function validateNumber(value, paramName = 'Parameter', min = Number.MIN_SAFE_IN
 }
 
 /**
- * Validates the results of a numerical solution against an analytical solution.
- * @param {Array<{x: number, y: number}>} numericalData - Array of data points from the numerical solution.
- * @param {Function} analyticalSolution - The analytical solution function.
- * @param {Object} params - Parameters used in the analytical solution.
- * @returns {number} The maximum error between numerical and analytical solutions.
- * @throws {TypeError} If numericalData is not a non-empty array.
- */
-function validateResults(numericalData, analyticalSolution, params) {
-  validateFunction(analyticalSolution);
-  
-  if (!Array.isArray(numericalData) || numericalData.length === 0) {
-    logger.error('Invalid input: numericalData must be a non-empty array', { numericalData });
-    throw new TypeError('numericalData must be a non-empty array');
-  }
-
-  const errors = numericalData.map((point) => {
-    validateNumber(point.x, 'x coordinate');
-    validateNumber(point.y, 'y coordinate');
-    const analyticalValue = analyticalSolution(point.x, params);
-    return Math.abs(point.y - analyticalValue);
-  });
-
-  const maxError = Math.max(...errors);
-  logger.info(`Maximum error between numerical and analytical solutions: ${maxError}`);
-  return maxError;
-}
-
-/**
  * Validates a string parameter.
  * @param {string} value - The string to validate.
  * @param {string} paramName - The name of the parameter being validated.
  * @throws {ValidationError} If the input is not a non-empty string.
  */
-function validateString(value, paramName) {
+export function validateString(value, paramName) {
   if (typeof value !== 'string' || value.trim().length === 0) {
     logger.error('String validation failed', { paramName, value });
     throw new ValidationError(`${paramName} must be a non-empty string`);
@@ -110,7 +91,7 @@ function validateString(value, paramName) {
  * @param {number} [minLength=0] - The minimum allowed length of the array.
  * @throws {ValidationError} If the input is not an array or doesn't meet the minimum length requirement.
  */
-function validateArray(value, paramName, minLength = 0) {
+export function validateArray(value, paramName, minLength = 0) {
   if (!Array.isArray(value) || value.length < minLength) {
     logger.error('Array validation failed', { paramName, value, minLength });
     throw new ValidationError(`${paramName} must be an array with at least ${minLength} element(s)`);
@@ -123,7 +104,7 @@ function validateArray(value, paramName, minLength = 0) {
  * @param {Object} params - The parameters to validate.
  * @throws {ValidationError} If any parameter is invalid.
  */
-function validateParameters(params) {
+export function validateParameters(params) {
   try {
     validateNumber(params.alpha, 'Alpha', 0, 1);
     validateNumber(params.beta, 'Beta', 0, 1);
@@ -137,7 +118,15 @@ function validateParameters(params) {
   }
 }
 
+/**
+ * Custom error class for validation errors.
+ * @extends Error
+ */
 class ValidationError extends Error {
+  /**
+   * Creates a new ValidationError instance.
+   * @param {string} message - The error message.
+   */
   constructor(message) {
     super(message);
     this.name = 'ValidationError';
@@ -145,12 +134,13 @@ class ValidationError extends Error {
 }
 
 export {
-  validateFunction,
-  validateNumber,
-  validateResults,
-  validateString,
-  validateArray,
-  validateParameters,
   ValidationError,
-  RangeError
+  // Removed export of built-in RangeError
+};
+
+// Added missing exports for functions
+export {
+  validatePositiveInteger,
+  validatePositiveNumber,
+  validateObject,
 };

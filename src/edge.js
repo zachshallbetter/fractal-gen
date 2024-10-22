@@ -3,7 +3,7 @@
  * @description Provides edge-specific optimizations and configurations for running the Fractal Generator on edge devices.
  * This module is designed to work with Vercel's Edge Runtime and Node.js, addressing resource constraints and performance considerations.
  * It includes request throttling, memory optimization, graceful shutdown mechanisms, job management, and statistics reporting.
- * @since 1.0.12
+ * @since 1.0.13
  * 
  * - Optimized for edge devices with limited CPU, memory, and storage.
  * - Implements efficient concurrency handling and robust error management.
@@ -18,7 +18,7 @@
 import { processFractalRequest, getModels, getMethods } from './fractalService.js';
 import { cacheClient } from './cacheService.js';
 import { dbClient } from './dbService.js';
-import { logger } from './utils/logger.js';
+import logger from './utils/logger.js';
 import { validateParameters } from './utils/validation.js';
 
 // Constants for resource management
@@ -56,11 +56,12 @@ export default async function edgeRuntime(req, res) {
 
     // Generate a unique job ID
     jobId = generateJobId();
-    logger.info(`Starting job ${jobId}`);
+    await logger.logJobStart(jobId);
 
     // Process the fractal request
     const params = req.body;
     validateParameters(params);
+    await logger.logInputParams(params);
     const result = await processFractalRequest(params);
 
     if (!result.success) {
@@ -97,9 +98,10 @@ export default async function edgeRuntime(req, res) {
 
     // Mark job as completed
     await completeJob(jobId);
-    logger.info(`Completed job ${jobId}`);
+    const duration = Date.now() - startTime;
+    await logger.logJobCompletion(jobId, duration);
   } catch (error) {
-    logger.error(`Edge runtime error in job ${jobId}:`, error);
+    await logger.error(`Edge runtime error in job ${jobId}:`, error);
     res.status(500).json({
       error: 'Internal server error in edge runtime',
       code: 'EDGE_INTERNAL_ERROR',
@@ -113,7 +115,7 @@ export default async function edgeRuntime(req, res) {
   } finally {
     releaseConcurrencySlot();
     const duration = Date.now() - startTime;
-    logger.info(`Job ${jobId} took ${duration}ms to process`);
+    await logger.info(`Job ${jobId} took ${duration}ms to process`);
   }
 }
 
@@ -125,8 +127,10 @@ export default async function edgeRuntime(req, res) {
  */
 async function acquireConcurrencySlot() {
   const activeRequests = await cacheClient.incr('activeRequests');
+  await logger.logCacheOperation('incr', 'activeRequests', activeRequests);
   if (activeRequests > MAX_CONCURRENT_REQUESTS) {
     await cacheClient.decr('activeRequests');
+    await logger.logCacheOperation('decr', 'activeRequests');
     return false;
   }
   return true;
@@ -139,6 +143,7 @@ async function acquireConcurrencySlot() {
  */
 async function releaseConcurrencySlot() {
   await cacheClient.decr('activeRequests');
+  await logger.logCacheOperation('decr', 'activeRequests');
 }
 
 /**
@@ -159,6 +164,7 @@ function generateJobId() {
  */
 async function updateJobProgress(jobId, progress) {
   await cacheClient.set(`job:${jobId}:progress`, progress);
+  await logger.logCacheOperation('set', `job:${jobId}:progress`, progress);
 }
 
 /**
@@ -169,6 +175,7 @@ async function updateJobProgress(jobId, progress) {
  */
 async function completeJob(jobId) {
   await cacheClient.set(`job:${jobId}:status`, 'completed');
+  await logger.logCacheOperation('set', `job:${jobId}:status`, 'completed');
   await dbClient.query('UPDATE jobs SET status = $1, completed_at = NOW() WHERE job_id = $2', ['completed', jobId]);
 }
 
@@ -181,7 +188,9 @@ async function completeJob(jobId) {
  */
 async function failJob(jobId, errorMessage) {
   await cacheClient.set(`job:${jobId}:status`, 'failed');
+  await logger.logCacheOperation('set', `job:${jobId}:status`, 'failed');
   await cacheClient.set(`job:${jobId}:error`, errorMessage);
+  await logger.logCacheOperation('set', `job:${jobId}:error`, errorMessage);
   await dbClient.query('UPDATE jobs SET status = $1, error_message = $2, failed_at = NOW() WHERE job_id = $3', ['failed', errorMessage, jobId]);
 }
 
@@ -189,11 +198,11 @@ async function failJob(jobId, errorMessage) {
  * Optimizes memory usage by implementing a simple garbage collection trigger.
  * @function
  */
-function optimizeMemoryUsage() {
+async function optimizeMemoryUsage() {
   if (global.gc) {
     global.gc();
   }
-  logger.info('Memory optimization performed');
+  await logger.info('Memory optimization performed');
 }
 
 // Trigger memory optimization periodically
@@ -205,7 +214,7 @@ setInterval(optimizeMemoryUsage, MEMORY_OPTIMIZATION_INTERVAL);
  * @async
  */
 async function gracefulShutdown() {
-  logger.info('Shutting down edge runtime gracefully...');
+  await logger.info('Shutting down edge runtime gracefully...');
   
   // Complete or restart in-process jobs
   const inProcessJobs = await cacheClient.keys('job:*:status');
@@ -221,7 +230,7 @@ async function gracefulShutdown() {
   await dbClient.end();
   await cacheClient.quit();
 
-  logger.info('Edge runtime shut down successfully');
+  await logger.info('Edge runtime shut down successfully');
   process.exit(0);
 }
 
@@ -231,13 +240,13 @@ process.on('SIGINT', gracefulShutdown);
 
 // Error handling for uncaught exceptions
 process.on('uncaughtException', async (error) => {
-  logger.error('Uncaught Exception:', error);
+  await logger.error('Uncaught Exception:', error);
   await reportError('uncaughtException', error);
 });
 
 // Error handling for unhandled promise rejections
 process.on('unhandledRejection', async (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  await logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
   await reportError('unhandledRejection', reason);
 });
 
@@ -252,9 +261,9 @@ async function reportError(type, error) {
   try {
     await dbClient.query('INSERT INTO error_logs (error_type, error_message, stack_trace) VALUES ($1, $2, $3)', 
       [type, error.message || String(error), error.stack || '']);
-    logger.error(`Reported ${type} error to database`);
+    await logger.error(`Reported ${type} error to database`);
   } catch (dbError) {
-    logger.error('Failed to log error to database:', dbError);
+    await logger.error('Failed to log error to database:', dbError);
   }
 }
 

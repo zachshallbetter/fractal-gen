@@ -6,7 +6,7 @@
  * - Utilizing parallel computation for improved performance
  * - Providing a numerical solution to various fractional models, including the Sine-Gordon equation
  * 
- * @since 1.0.8
+ * @since 1.0.9
  * 
  * @example
  * import { ladmSolver } from './ladmSolver.js';
@@ -30,10 +30,12 @@ import { ParallelComputation } from '../utils/parallelComputation.js';
 import { validateParameters } from '../utils/validation.js';
 import logger from '../utils/logger.js';
 import { generateOperationalMatrices, bernsteinPolynomials } from '../utils/mathUtils.js';
+import { processFractalRequest } from '../fractalService.js';
 
 /**
  * Solves fractional differential equations using the Laplace Adomian Decomposition Method.
  * 
+ * @async
  * @param {Object} params - Parameters for the solver.
  * @param {string} params.model - The model to solve (e.g., 'fractionalSineGordon', 'advectionDiffusionReaction').
  * @param {number} params.alpha - Fractional order in time.

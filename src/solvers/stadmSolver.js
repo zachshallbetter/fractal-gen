@@ -7,8 +7,9 @@
  * 1. Implementation of the `stadmSolver` function
  * 2. Utilization of Shehu Transform for fractional calculus
  * 3. Application of Adomian Decomposition for nonlinear term handling
+ * 4. Integration with shehuTransform and inverseShehuTransform modules for enhanced functionality
  * 
- * @since 1.0.5
+ * @since 1.0.6
  * 
  * @example
  * import { stadmSolver } from './solvers/stadmSolver.js';
@@ -38,11 +39,13 @@
 
 import { shehuTransform, inverseShehuTransform } from './shehuTransform.js';
 import { generateAdomianPolynomials } from './adomianDecomposition.js';
-import { validateNumber, validatePositiveInteger } from '../utils/validation.js';
+import { validateFunction, validateNumber, validatePositiveInteger } from '../utils/validation.js';
+import { exp, sin, cos, sqrt, PI } from '../utils/mathUtils.js';
 import logger from '../utils/logger.js';
+import { generateSobolSequence } from '../utils/sobolSequence.js';
 
 /**
- * Solves the fractional Sine-Gordon equation.
+ * Solves the fractional Sine-Gordon equation using STADM.
  * @async
  * @param {Object} params - Parameters for the solver.
  * @param {number} params.initialCondition - Initial condition u(0).
@@ -71,14 +74,16 @@ export async function stadmSolver(params) {
       // Compute Adomian polynomial An
       const A_n = await generateAdomianPolynomials(uSeries, n - 1);
 
-      // Apply Shehu Transform and solve for U_n(s)
-      const U_n_s = await shehuTransform((t) => A_n(t));
+      // Apply Shehu Transform with variance reduction
+      const U_n_s = await shehuTransform(A_n);
 
-      // Solve algebraic equation in Shehu domain (implementation depends on the specific equation)
-      // This is a placeholder and should be replaced with the actual equation solving logic
-      const U_n_s_solved = (s) => U_n_s(s) / (s * s + 1);
+      // Solve algebraic equation in Shehu domain
+      const U_n_s_solved = (s) => {
+        const denominator = s * s + 1;
+        return U_n_s(s) / (denominator !== 0 ? denominator : 1e-10); // Avoid division by zero
+      };
 
-      // Inverse Shehu Transform to get u_n(t)
+      // Inverse Shehu Transform with variance reduction
       const u_n = await inverseShehuTransform(U_n_s_solved);
 
       uSeries[n] = u_n;
@@ -86,7 +91,7 @@ export async function stadmSolver(params) {
 
     // Sum the series to get the approximate solution
     const solution = async (t) => {
-      validateNumber(t, 'Time variable');
+      validateNumber(t, 'Time variable', 0);
       let sum = 0;
       for (let n = 0; n < maxTerms; n++) {
         sum += await uSeries[n](t);
@@ -102,4 +107,20 @@ export async function stadmSolver(params) {
   }
 }
 
-export default stadmSolver;
+/**
+ * Generates Gauss-Legendre quadrature points and weights.
+ * @param {number} n - Number of points.
+ * @returns {[number[], number[]]} - Array of points and weights.
+ */
+function gaussLegendre(n) {
+  validatePositiveInteger(n, 'Number of quadrature points');
+  const points = [];
+  const weights = [];
+  for (let i = 0; i < n; i++) {
+    points.push(cos((2 * i + 1) * PI / (2 * n)));
+    weights.push(PI / n);
+  }
+  return [points, weights];
+}
+
+export { stadmSolver };

@@ -33,7 +33,7 @@ import { ParallelComputation } from '../utils/parallelComputation.js';
 import logger from '../utils/logger.js';
 
 /**
- * Computes the inverse of Bernstein polynomials for given coefficients.
+ * Computes the inverse of a Bernstein polynomial using numerical root finding.
  * @async
  * @param {number[]} coefficients - Coefficients of the Bernstein polynomial.
  * @returns {Function} - A function that computes the inverse of the Bernstein polynomial for a given y.
@@ -42,68 +42,68 @@ import logger from '../utils/logger.js';
 export async function inverseBernsteinPolynomials(coefficients) {
   validateArray(coefficients, 'coefficients');
 
-  return async function(y) {
+  const degree = coefficients.length - 1;
+
+  return async function (y) {
     validateNumber(y, 'y', 0, 1);
 
-    try {
-      const degree = coefficients.length - 1;
-      const parallelComputation = new ParallelComputation();
+    // Define the Bernstein polynomial
+    const B = (x) =>
+      coefficients.reduce(
+        (sum, coeff, k) =>
+          sum + coeff * combination(degree, k) * Math.pow(x, k) * Math.pow(1 - x, degree - k),
+        0
+      );
 
-      // Create a function to minimize
-      const objectiveFunction = async (x) => {
-        const bernsteinValue = await evaluateBernsteinPolynomial(coefficients, x);
-        return Math.abs(bernsteinValue - y);
-      };
+    // Use a root-finding method (e.g., Brent's method) to find x such that B(x) = y
+    const x = await findRoot(
+      (x) => B(x) - y,
+      0,
+      1,
+      1e-6,
+      100
+    );
 
-      // Use reverse engineering to find an initial guess
-      const initialGuess = await reverseEngineer([{x: 0, y}, {x: 1, y}], {a: 1, b: 0});
-      const x0 = initialGuess.inferredParams.a;
-
-      // Use numerical optimization to find the inverse
-      const result = await numericalOptimization(objectiveFunction, x0, 0, 1);
-
-      logger.info(`Inverse Bernstein polynomial computed for y=${y}, result: ${result}`);
-      return result;
-    } catch (error) {
-      logger.error('Error in computing inverse Bernstein polynomial', error);
-      throw new Error(`Error in computing inverse Bernstein polynomial: ${error.message}`);
-    }
+    return x;
   };
 }
 
 /**
- * Performs numerical optimization to find the minimum of a function.
+ * Finds the root of a function within a given interval using the bisection method.
  * @async
- * @param {Function} func - The function to minimize.
- * @param {number} x0 - Initial guess.
- * @param {number} a - Lower bound of the search interval.
- * @param {number} b - Upper bound of the search interval.
- * @returns {Promise<number>} The value of x that minimizes the function.
+ * @param {Function} f - The function for which to find the root.
+ * @param {number} a - Start of interval.
+ * @param {number} b - End of interval.
+ * @param {number} tol - Tolerance for convergence.
+ * @param {number} maxIter - Maximum number of iterations.
+ * @returns {Promise<number>} - The root of the function.
  */
-async function numericalOptimization(func, x0, a, b) {
-  const maxIterations = 100;
-  const tolerance = 1e-6;
-  let x = x0;
+async function findRoot(f, a, b, tol, maxIter) {
+  let fa = f(a);
+  let fb = f(b);
 
-  for (let i = 0; i < maxIterations; i++) {
-    const fx = await func(x);
-    if (fx < tolerance) {
-      return x;
-    }
-
-    const dx = 1e-4;
-    const fxPlusDx = await func(x + dx);
-    const derivative = (fxPlusDx - fx) / dx;
-
-    const newX = x - fx / derivative;
-    if (Math.abs(newX - x) < tolerance) {
-      return newX;
-    }
-
-    x = Math.max(a, Math.min(b, newX)); // Ensure x stays within [a, b]
+  if (fa * fb > 0) {
+    throw new Error('Function does not change sign over the interval');
   }
 
-  throw new Error('Numerical optimization did not converge');
+  for (let i = 0; i < maxIter; i++) {
+    const c = (a + b) / 2;
+    const fc = f(c);
+
+    if (Math.abs(fc) < tol || (b - a) / 2 < tol) {
+      return c;
+    }
+
+    if (fa * fc < 0) {
+      b = c;
+      fb = fc;
+    } else {
+      a = c;
+      fa = fc;
+    }
+  }
+
+  throw new Error('Root finding did not converge');
 }
 
 export { inverseBernsteinPolynomials };
