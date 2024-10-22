@@ -8,7 +8,7 @@
  * - Implementing error handling and graceful degradation to sequential processing if parallel execution is unavailable
  * - Optimizing resource usage based on available system resources
  * 
- * @since 1.0.8
+ * @since 1.0.10
  * 
  * @example
  * // Example usage of ParallelComputation:
@@ -30,7 +30,6 @@
  * }
  * 
  * @see {@link https://nodejs.org/api/worker_threads.html|Node.js Worker Threads}
- * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API|Web Workers API}
  */
 
 import os from 'os';
@@ -79,7 +78,7 @@ class ParallelComputation {
       logger.error('Parallel execution failed', error);
       throw new Error(`Parallel execution failed: ${error.message}`);
     } finally {
-      this._terminateWorkers(workerPool);
+      await this._terminateWorkers(workerPool);
     }
 
     return results;
@@ -121,11 +120,12 @@ class ParallelComputation {
   /**
    * Terminates all workers in the pool.
    * @private
+   * @async
    * @param {Worker[]} workerPool - Array of workers to terminate.
    */
-  _terminateWorkers(workerPool) {
+  async _terminateWorkers(workerPool) {
     logger.info(`Terminating ${workerPool.length} workers`);
-    workerPool.forEach(worker => worker.terminate());
+    await Promise.all(workerPool.map(worker => worker.terminate()));
   }
 }
 

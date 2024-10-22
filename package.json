@@ -26,7 +26,9 @@
     "dependencies": {
         "canvas": "^2.11.2",
         "express": "^4.21.1",
+        "ioredis": "^5.4.1",
         "mathjs": "^13.2.0",
+        "pg": "^8.13.0",
         "winston": "^3.15.0",
         "yargs": "^17.7.2"
     },

@@ -2,7 +2,7 @@
  * @module FractalGeneratorInterface
  * @description Handles user interactions and communicates with the server to generate fractals.
  * Provides an interactive interface for users to adjust parameters and visualize fractal data.
- * @since 1.0.3
+ * @since 1.0.4
  */
 
 const canvas = document.getElementById('fractalCanvas');
@@ -81,7 +81,7 @@ async function generateFractal() {
 
 /**
  * Renders the fractal data on the canvas
- * @param {Object} data - The fractal data to render
+ * @param {Array<{x: number, y: number}>} data - The fractal data to render
  */
 function renderFractal(data) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -101,6 +101,8 @@ function renderFractal(data) {
 /**
  * Displays the results of the fractal generation
  * @param {Object} result - The result object from the server
+ * @param {Array<{x: number, y: number}>} result.data - The generated fractal data
+ * @param {Object} [result.inferredParams] - The inferred parameters (if reverse engineering was performed)
  */
 function displayResults(result) {
   resultsDiv.innerHTML = '';
@@ -171,14 +173,19 @@ async function fetchModelsAndMethods() {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     const data = await response.json();
+
     populateModelSelect(data.models);
     populateMethodSelect(data.methods[data.models[0]]);
 
-    // Add event listener to update methods when model changes
+    // Update methods when model changes
     modelSelect.addEventListener('change', () => {
       populateMethodSelect(data.methods[modelSelect.value]);
       generateFractal();
     });
+
+    // Generate fractal when method changes
+    methodSelect.addEventListener('change', generateFractal);
+
   } catch (error) {
     console.error('Error fetching models and methods:', error);
     displayError('Failed to fetch available models and methods');

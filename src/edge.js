@@ -3,20 +3,23 @@
  * @description Provides edge-specific optimizations and configurations for running the Fractal Generator on edge devices.
  * This module is designed to work with Vercel's Edge Runtime and Node.js, addressing resource constraints and performance considerations.
  * It includes request throttling, memory optimization, graceful shutdown mechanisms, job management, and statistics reporting.
- * @since 1.0.11
+ * @since 1.0.12
  * 
  * - Optimized for edge devices with limited CPU, memory, and storage.
  * - Implements efficient concurrency handling and robust error management.
  * - Utilizes async programming to prevent blocking the event loop.
  * - Includes logging and monitoring for performance tracking.
  * - Designed for compatibility with various edge device architectures and operating systems.
+ * - Integrates with FractalGeneratorService for consistent fractal generation across different application entry points.
+ * - Utilizes DatabaseService for efficient data persistence and retrieval in edge environments.
+ * - Supports multiple fractal models and methods as defined in ModelSelector.
  */
 
-import { processFractalRequest } from './fractalService.js';
+import { processFractalRequest, getModels, getMethods } from './fractalService.js';
 import { cacheClient } from './cacheService.js';
 import { dbClient } from './dbService.js';
 import { logger } from './utils/logger.js';
-import { validateNumber, validateString } from './utils/validation.js';
+import { validateParameters } from './utils/validation.js';
 
 // Constants for resource management
 const MAX_CONCURRENT_REQUESTS = 5;
@@ -57,8 +60,14 @@ export default async function edgeRuntime(req, res) {
 
     // Process the fractal request
     const params = req.body;
-    validateFractalParams(params);
-    const data = await processFractalRequest(params);
+    validateParameters(params);
+    const result = await processFractalRequest(params);
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
+
+    const data = result.data;
 
     // Stream the response in chunks to reduce memory usage
     const totalChunks = Math.ceil(data.length / CHUNK_SIZE);
@@ -106,19 +115,6 @@ export default async function edgeRuntime(req, res) {
     const duration = Date.now() - startTime;
     logger.info(`Job ${jobId} took ${duration}ms to process`);
   }
-}
-
-/**
- * Validates fractal generation parameters.
- * @function
- * @param {Object} params - The parameters to validate.
- * @throws {Error} If parameters are invalid.
- */
-function validateFractalParams(params) {
-  validateNumber(params.width, 'Width', 1, 10000);
-  validateNumber(params.height, 'Height', 1, 10000);
-  validateString(params.algorithm, 'Algorithm');
-  // Add more parameter validations as needed
 }
 
 /**
@@ -260,4 +256,24 @@ async function reportError(type, error) {
   } catch (dbError) {
     logger.error('Failed to log error to database:', dbError);
   }
+}
+
+/**
+ * Retrieves available fractal models.
+ * @function
+ * @returns {string[]} Array of available model names.
+ */
+export function getAvailableModels() {
+  return getModels();
+}
+
+/**
+ * Retrieves available methods for a given fractal model.
+ * @function
+ * @param {string} model - The name of the fractal model.
+ * @returns {string[]} Array of available method names for the specified model.
+ * @throws {Error} If the model is not recognized.
+ */
+export function getAvailableMethods(model) {
+  return getMethods(model);
 }

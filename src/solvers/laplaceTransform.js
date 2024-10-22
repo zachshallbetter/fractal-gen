@@ -9,43 +9,56 @@
  * - Implementing comprehensive error handling and parameter validation
  * - Optimizing performance through efficient algorithms and parallel processing
  * 
- * @since 1.0.6
+ * @since 1.0.10
  * 
  * @example
  * // Example usage of laplaceTransform:
+ * import { laplaceTransform } from './laplaceTransform.js';
+ * import logger from '../utils/logger.js';
+ * 
  * const f = (t) => Math.exp(-t);
  * try {
  *   const F = await laplaceTransform(f);
  *   const result = await F(2); // Compute F(s) at s = 2
- *   console.log(result);
+ *   logger.info('Laplace transform result:', { result });
  * } catch (error) {
- *   console.error('Error in Laplace transform:', error.message);
+ *   logger.error('Error in Laplace transform:', error);
  * }
  * 
  * @example
  * // Example usage of inverseLaplaceTransform:
+ * import { inverseLaplaceTransform } from './laplaceTransform.js';
+ * import logger from '../utils/logger.js';
+ * 
  * const F = (s) => 1 / (s + 1);
  * try {
  *   const f = await inverseLaplaceTransform(F);
  *   const result = await f(3); // Compute f(t) at t = 3
- *   console.log(result);
+ *   logger.info('Inverse Laplace transform result:', { result });
  * } catch (error) {
- *   console.error('Error in inverse Laplace transform:', error.message);
+ *   logger.error('Error in inverse Laplace transform:', error);
  * }
  * 
  * @example
  * // Example of error handling and parameter validation:
+ * import { laplaceTransform } from './laplaceTransform.js';
+ * import logger from '../utils/logger.js';
+ * 
  * try {
  *   const invalidF = 'not a function';
  *   await laplaceTransform(invalidF);
  * } catch (error) {
- *   console.error('Validation error:', error.message);
+ *   logger.error('Validation error:', error);
  * }
  */
 
-import math from 'mathjs';
-import { validateFunction, validateNumber } from '../utils/validators';
-import { ParallelComputation } from '../utils/parallelComputation';
+import { create, all } from 'mathjs';
+import { validateFunction, validateNumber } from '../utils/validation.js';
+import { ParallelComputation } from '../utils/parallelComputation.js';
+import logger from '../utils/logger.js';
+import { combinations } from '../utils/mathUtils.js';
+
+const math = create(all);
 
 /**
  * Computes the Laplace transform of a given function using numerical integration.
@@ -54,8 +67,8 @@ import { ParallelComputation } from '../utils/parallelComputation';
  * @returns {Function} - A function that computes the Laplace transform for a given s.
  * @throws {Error} If the input is invalid or computation fails.
  */
-async function laplaceTransform(f) {
-  validateFunction(f);
+export async function laplaceTransform(f) {
+  validateFunction(f, 'Time-domain function');
 
   return async function(s) {
     validateNumber(s, 'Complex frequency variable');
@@ -63,8 +76,11 @@ async function laplaceTransform(f) {
     try {
       const integrand = (t) => Math.exp(-s * t) * f(t);
       const upperLimit = 100; // Adjust based on the behavior of f(t)
-      return await math.integrate(integrand, 0, upperLimit);
+      const result = await math.integrate(integrand, 0, upperLimit);
+      logger.info('Laplace transform computed successfully');
+      return result;
     } catch (error) {
+      logger.error('Laplace transform computation failed:', error);
       throw new Error(`Laplace transform computation failed: ${error.message}`);
     }
   };
@@ -77,8 +93,8 @@ async function laplaceTransform(f) {
  * @returns {Function} - A function that computes the inverse Laplace transform for a given t.
  * @throws {Error} If the input is invalid or computation fails.
  */
-async function inverseLaplaceTransform(F) {
-  validateFunction(F);
+export async function inverseLaplaceTransform(F) {
+  validateFunction(F, 'Laplace-domain function');
 
   return async function(t) {
     validateNumber(t, 'Time variable');
@@ -86,16 +102,20 @@ async function inverseLaplaceTransform(F) {
     try {
       const M = 64; // Number of terms in the Talbot algorithm
       const talbotMethod = new TalbotMethod(M);
-      return await talbotMethod.compute(F, t);
+      const result = await talbotMethod.compute(F, t);
+      logger.info('Inverse Laplace transform computed successfully');
+      return result;
     } catch (error) {
+      logger.error('Inverse Laplace transform computation failed:', error);
       throw new Error(`Inverse Laplace transform computation failed: ${error.message}`);
     }
   };
 }
+
 /**
  * Implements the Talbot method for numerical inversion of Laplace transforms.
  * @class
- * @since 1.0.8
+ * @since 1.0.10
  */
 class TalbotMethod {
   /**
@@ -103,6 +123,7 @@ class TalbotMethod {
    */
   constructor(M) {
     this.M = M;
+    this.parallelComputation = new ParallelComputation();
   }
 
   /**
@@ -114,9 +135,8 @@ class TalbotMethod {
    */
   async compute(F, t) {
     const r = 2 * this.M / (5 * t);
-    let sum = 0;
-
-    for (let k = 0; k < this.M; k++) {
+    
+    const tasks = Array.from({ length: this.M }, (_, k) => async () => {
       const theta = k * Math.PI / this.M;
       const s = math.complex(
         r * theta / Math.tan(theta),
@@ -127,8 +147,11 @@ class TalbotMethod {
         t * r / Math.pow(Math.sin(theta), 2),
         t * r * (1 / Math.tan(theta) + theta)
       );
-      sum += math.re(math.multiply(math.exp(z), F(s), dz));
-    }
+      return math.re(math.multiply(math.exp(z), F(s), dz));
+    });
+
+    const results = await this.parallelComputation.executeTasks(tasks);
+    const sum = results.reduce((acc, val) => acc + val, 0);
 
     return math.divide(math.multiply(r, sum), 2 * Math.PI);
   }

@@ -4,11 +4,12 @@
  * Ensures comprehensive parameter definition and documentation for all models and methods.
  * Integrates with the Logger module for improved error handling and logging.
  * 
- * - Parses and validates command-line arguments
- * - Validates input parameters
- * - Integrates with parallel computation for efficient computation
- * - Integrates with output handler for result processing
- * - Integrates with reverse engineering for parameter inference
+ * This module achieves its intent by:
+ * - Parsing and validating command-line arguments
+ * - Validating input parameters
+ * - Integrating with parallel computation for efficient processing
+ * - Integrating with output handler for result processing
+ * - Integrating with reverse engineering for parameter inference
  * 
  * @example
  * import { parseInputs, processInputs } from './inputHandler.js';
@@ -18,7 +19,7 @@
  * const results = await processInputs(inputs);
  * logger.info('Processing completed', { results });
  * 
- * @since 1.0.13
+ * @since 1.0.14
  */
 
 import yargs from 'yargs';
@@ -37,7 +38,7 @@ import logger from './logger.js';
  */
 function parseInputs() {
   const availableModels = ['twoScale', 'interpersonal', 'advectionDiffusion', 'fractionalSineGordon'];
-  const availableMethods = ['LADM', 'STADM', 'MHPM', 'HeLaplace'];
+  const availableMethods = ['LADM', 'STADM', 'MHPM', 'HeLaplace', 'RungeKutta'];
 
   const argv = yargs(hideBin(process.argv))
     .usage('Usage: $0 [options]')
@@ -51,6 +52,7 @@ function parseInputs() {
       alias: 'M',
       describe: 'Select the method for solving the equation (applicable to specific models)',
       choices: availableMethods,
+      default: 'RungeKutta',
     })
     .option('alpha', {
       alias: 'a',

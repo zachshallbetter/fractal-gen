@@ -1,68 +1,79 @@
 /**
  * @module solvers/operationalMatrices
- * @description Generates operational matrices for fractional and fractal–fractional derivatives.
- * This module provides functionality to create operational matrices used in solving
- * fractional and fractal-fractional differential equations.
- * 
- * The main function, `generateOperationalMatrices`, constructs these matrices
- * based on the specified variable, order of derivative, fractal dimension, and
- * number of terms in the series expansion.
- * 
- * The operational matrix is initialized as a 2D array filled with zeros and then
- * populated based on the derivative order and fractal dimension. The current
- * implementation modifies diagonal elements according to these parameters, but
- * this may need to be adjusted based on the specific mathematical model being used.
- * 
- * @since 1.0.3
- * 
- * @example
- * const { generateOperationalMatrices } = require('./operationalMatrices');
- * const matrix = generateOperationalMatrices('x', 0.5, 1.8, 10);
- * 
- * @see {@link https://en.wikipedia.org/wiki/Fractional_calculus} for more information on fractional calculus
- * @see {@link https://www.sciencedirect.com/science/article/pii/S0960077921008170} for details on fractal-fractional derivatives
- * @see {@link https://www.sciencedirect.com/science/article/pii/S0096300306015098} for information on operational matrices in fractional calculus
+ * @description Generates operational matrices for fractional derivatives using Bernstein polynomials.
+ * This module achieves its intent by:
+ * - Constructing matrices based on the fractional order and polynomial degree
+ * - Supporting both time and space variables
+ * - Utilizing mathematical utilities for accurate computations
+ *
+ * @since 1.0.16
  */
+
+import { gammaFunction, combination } from '../utils/mathUtils.js';
+import { validatePositiveInteger, validateNumber, validateString } from '../utils/validation.js';
 
 /**
- * Generates operational matrices for fractional and fractal–fractional derivatives.
- * @param {string} variable - The variable to differentiate.
- * @param {number} order - The order of the derivative.
- * @param {number} fractalDim - The fractal dimension.
- * @param {number} n - The number of terms in the series.
- * @param {Object} [options] - Optional configuration options.
- * @param {string} [options.boundaryCondition='default'] - The boundary condition to apply.
- * @param {string} [options.solverType='standard'] - The solver type to use.
- * @returns {Array} - The operational matrix.
+ * Generates the operational matrix for fractional derivatives.
+ * @param {string} variable - The variable ('time' or 'space').
+ * @param {number} order - The fractional order.
+ * @param {number} fractalDim - The fractal dimension (typically 1 for time).
+ * @param {number} n - Degree of Bernstein polynomials.
+ * @returns {number[][]} - The operational matrix.
+ * @since 1.0.16
  */
-function generateOperationalMatrices(variable, order, fractalDim, n, options = {}) {
-  const matrix = new Array(n).fill(0).map(() => new Array(n).fill(0));
+function generateOperationalMatrices(variable, order, fractalDim, n) {
+  validateString(variable, 'Variable');
+  validateNumber(order, 'Order', 0, 2);
+  validatePositiveInteger(n, 'Polynomial Degree');
 
-  // Apply configurations based on options
-  const { boundaryCondition = 'default', solverType = 'standard' } = options;
-
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) {
-      if (i === j) {
-        // Adjust matrix generation based on solver type or boundary conditions
-        matrix[i][j] = computeMatrixElement(i, j, order, fractalDim, boundaryCondition, solverType);
-      }
+  const matrix = [];
+  for (let i = 0; i <= n; i++) {
+    matrix[i] = [];
+    for (let j = 0; j <= n; j++) {
+      // Compute matrix elements based on the variable and order
+      const value = computeMatrixElement(i, j, order, n, variable);
+      matrix[i][j] = value;
     }
   }
 
   return matrix;
 }
 
-function computeMatrixElement(i, j, order, fractalDim, boundaryCondition, solverType) {
-  // Example computation logic that varies by solver type and boundary condition
-  let value = Math.pow(j + 1, order) * Math.pow(fractalDim, i);
-  if (solverType === 'advanced') {
-    value *= Math.log(j + 1); // Example modification for an 'advanced' solver
+/**
+ * Computes a single element of the operational matrix for fractional derivatives.
+ * @param {number} i - Row index (0-based).
+ * @param {number} j - Column index (0-based).
+ * @param {number} order - The fractional order of the derivative (alpha).
+ * @param {number} n - Degree of Bernstein polynomials.
+ * @param {string} variable - The variable ('time' or 'space').
+ * @returns {number} - The computed matrix element D_{i,j}.
+ */
+function computeMatrixElement(i, j, order, n, variable) {
+  // Validate indices
+  if (i < 0 || i > n || j < 0 || j > n) {
+    throw new Error('Invalid indices for operational matrix');
   }
-  if (boundaryCondition === 'periodic') {
-    value += Math.sin(i * Math.PI / j); // Example modification for periodic boundary conditions
+
+  // For fractional derivative of Bernstein polynomials, the operational matrix elements can be computed using:
+  // D_{i,j} = (n choose j) * sum_{k=0}^{j} (-1)^{k} * (j choose k) * (i / n)^{j - k} * (orderGamma / gamma(j - k + 1 - order))
+  // where orderGamma = gamma(j + 1 - order) and gamma is the Gamma function.
+  // Reference: Fractional Calculus and Bernstein Polynomials literature.
+
+  const binomial_n_j = combination(n, j);
+  let sum = 0;
+  const orderGamma = gammaFunction(j + 1 - order);
+
+  for (let k = 0; k <= j; k++) {
+    const sign = Math.pow(-1, k);
+    const binomial_j_k = combination(j, k);
+    const powerTerm = Math.pow(i / n, j - k);
+    const gammaDenominator = gammaFunction(j - k + 1 - order);
+    const term = (sign * binomial_j_k * powerTerm * orderGamma) / gammaDenominator;
+    sum += term;
   }
-  return value;
+
+  const D_ij = binomial_n_j * sum;
+  return D_ij;
 }
 
-module.exports = { generateOperationalMatrices };
+export { generateOperationalMatrices };

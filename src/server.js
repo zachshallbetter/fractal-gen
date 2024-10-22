@@ -1,13 +1,13 @@
 /**
  * @module FractalGeneratorServer
  * @description Sets up an Express server to serve the web interface and handle fractal generation requests.
- * @since 1.0.4
+ * @since 1.0.5
  */
 
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { processFractalRequest } from './fractalService.js';
+import { processFractalRequest, getModels, getMethods } from './fractalService.js';
 
 function startServer() {
   const app = express();
@@ -24,8 +24,8 @@ function startServer() {
   app.post('/generateFractal', async (req, res, next) => {
     try {
       const params = req.body;
-      const data = await processFractalRequest(params);
-      res.json(data);
+      const result = await processFractalRequest(params);
+      res.json(result);
     } catch (error) {
       next(error);
     }
@@ -35,6 +35,20 @@ function startServer() {
   app.use((err, req, res, next) => {
     console.error('Server error:', err);
     res.status(500).json({ error: 'Internal server error' });
+  });
+
+  // Handle API requests for available models and methods
+  app.get('/api/models', (req, res, next) => {
+    try {
+      const models = getModels();
+      const methods = {};
+      models.forEach(model => {
+        methods[model] = getMethods(model);
+      });
+      res.json({ models, methods });
+    } catch (error) {
+      next(error);
+    }
   });
 
   const PORT = process.env.PORT || 3000;

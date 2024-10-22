@@ -4,11 +4,13 @@
  * @description Orchestrates input parsing, fractal data generation, output handling, and reverse engineering.
  * Utilizes advanced mathematical models and methods to generate fractals and analyze them.
  * Optimized for non-blocking, performant execution suitable for edge computing environments.
- * @since 1.0.6
+ * @since 1.0.7
  */
 
 import { parseInputs, processInputs } from './utils/inputHandler.js';
 import { startServer } from './server.js';
+import { outputResults } from './utils/outputHandler.js';
+import logger from './utils/logger.js';
 
 /**
  * Main function to execute the Fractal Generator application.
@@ -18,27 +20,32 @@ import { startServer } from './server.js';
  */
 async function main() {
   try {
-    // Start the server asynchronously
-    const serverPromise = startServer();
+    logger.info('Starting Fractal Generator application');
 
     // Parse user inputs
     const params = parseInputs();
 
     // Process inputs and generate fractal data
-    await processInputs(params);
+    const fractalData = await processInputs(params);
 
-    // Ensure the server has started
-    await serverPromise;
+    // Output results
+    await outputResults(fractalData, params);
 
-    console.log('Fractal Generator application and server started successfully.');
+    // Start the server if requested
+    if (params.startServer) {
+      await startServer();
+      logger.info('Server started successfully');
+    }
+
+    logger.info('Fractal Generator application completed successfully');
   } catch (error) {
-    console.error('An error occurred:', error.message);
+    logger.error('An error occurred in the main function:', error);
     process.exit(1);
   }
 }
 
 // Execute the main function
 main().catch(error => {
-  console.error('Unhandled error in main:', error);
+  logger.error('Unhandled error in main:', error);
   process.exit(1);
 });

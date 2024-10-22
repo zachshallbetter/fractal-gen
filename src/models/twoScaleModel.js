@@ -1,53 +1,45 @@
 /**
  * @module models/twoScaleModel
- * @description Implements the Two-Scale Population Model using He-Laplace Method and Fractional Complex Transform.
- * @since 1.0.2
- * 
- * The Two-Scale Population Model is a mathematical model that describes the dynamics of a population that is divided into two distinct scales.
- * 
- * This model implements the Two-Scale Population Model using the He-Laplace Method and Fractional Complex Transform. It achieves its intent by:
- * - Defining the fractional differential equation using He's fractional derivative
- * - Applying the He-Laplace Method to solve the ODE
- * - Generating data points from the solution
- * 
- * The implementation is suitable for solving the two-scale population model with fractional derivatives, providing a robust approach to modeling complex population dynamics.
- * 
- * @example
- * const data = await solve({
- *   alpha: 0.5,
- *   initialCondition: (t) => Math.sin(t),
- *   timeSteps: 100,
- *   timeEnd: 10,
- * });
- * 
- * @input {{alpha: number, initialCondition: (t: number) => number, timeSteps: number, timeEnd: number}}
- * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
+ * @description Implements the Two-Scale Population Model using various numerical methods.
+ * @since 1.0.14
  */
 
-const { hesFractionalDerivative } = require('../solvers/hesFractionalDerivative');
-const { heLaplaceMethod } = require('../solvers/heLaplaceMethod');
+import { rungeKuttaSolver } from '../solvers/rungeKuttaSolver.js';
+import { validateParameters } from '../utils/validation.js';
 
 /**
- * Solves the two-scale population model using the He-Laplace Method and Fractional Complex Transform.
- * @param {Object} params - The parameters parsed from user inputs.
- * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
+ * Defines the ODE for the Two-Scale Population Model.
+ * @param {number} t - Time variable.
+ * @param {number} y - Population at time t.
+ * @param {Object} params - Model parameters.
+ * @returns {number} The derivative dy/dt.
  */
-async function solve(params) {
-  // Define the fractional differential equation
-  const fractionalDE = (t, y) => hesFractionalDerivative(y, params.alpha, t) + y(t);
-
-  // Apply He-Laplace Method to solve the ODE
-  const solution = heLaplaceMethod(fractionalDE, params.initialCondition);
-
-  // Generate data points
-  const data = [];
-  const dt = params.timeEnd / params.timeSteps;
-  for (let i = 0; i <= params.timeSteps; i++) {
-    const t = i * dt;
-    data.push({ x: t, y: solution(t) });
-  }
-
-  return data;
+function twoScalePopulationModel(t, y, params) {
+  const { growthRate, carryingCapacity } = params;
+  return growthRate * y * (1 - y / carryingCapacity);
 }
 
-module.exports = { solve };
+/**
+ * Solves the Two-Scale Population Model using the specified numerical method.
+ * @async
+ * @param {Object} params - Parameters for the solver.
+ * @returns {Promise<Array<{ t: number, y: number }>>} - Solution data points.
+ * @since 1.0.14
+ */
+async function solveTwoScaleModel(params) {
+  validateParameters(params);
+
+  const solverParams = {
+    f: twoScalePopulationModel,
+    t0: params.t0 || 0,
+    y0: params.y0 || 10,
+    h: params.h || 0.1,
+    steps: params.steps || 100,
+    params,
+  };
+
+  const solution = await rungeKuttaSolver(solverParams);
+  return solution;
+}
+
+export { solveTwoScaleModel };

@@ -42,13 +42,33 @@
  * @input {{model: string, method: string, alpha: number, beta: number, gamma: number, polynomialDegree: number, timeEnd: number, spaceEnd: number}}
  * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
  * 
- * @since 1.0.9
+ * @since 1.0.11
  */
 
 import { ladmSolver } from '../solvers/ladmSolver.js';
 import { stadmSolver } from '../solvers/stadmSolver.js';
 import { validateParameters, validateString } from '../utils/validation.js';
 import logger from '../utils/logger.js';
+import { rungeKuttaSolver } from '../solvers/rungeKuttaSolver.js';
+import { mhpmSolver } from '../solvers/mhpmSolver.js';
+
+/**
+ * Map of models to their available solvers.
+ */
+const modelSolvers = {
+  fractionalSineGordon: {
+    LADM: ladmSolver,
+    STADM: stadmSolver,
+    MHPM: mhpmSolver, // Added MHPM method
+    RungeKutta: rungeKuttaSolver,
+    // ... other methods ...
+  },
+  advectionDiffusion: {
+    MHPM: mhpmSolver, // Added MHPM method
+    // ... other methods ...
+  },
+  // ... other models ...
+};
 
 /**
  * Generates fractal data using the selected model and method.
@@ -70,26 +90,18 @@ async function generateFractalData(params) {
 
     const { model, method } = params;
 
-    // Map models to their solvers
-    const modelSolvers = {
-      fractionalSineGordon: {
-        LADM: ladmSolver,
-        STADM: stadmSolver,
-        // Other methods
-      },
-      // Other models
-    };
-
     if (!modelSolvers[model]) {
       throw new Error(`Model "${model}" is not supported.`);
     }
 
-    if (!modelSolvers[model][method]) {
+    const solver = modelSolvers[model][method];
+
+    if (!solver) {
       throw new Error(`Method "${method}" is not available for model "${model}".`);
     }
 
     logger.info(`Generating fractal data using ${model} model with ${method} method`, { params });
-    const result = await modelSolvers[model][method](params);
+    const result = await solver(params);
     logger.info(`Fractal data generation completed successfully`, { model, method });
     return result;
   } catch (error) {

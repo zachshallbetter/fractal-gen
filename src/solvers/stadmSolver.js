@@ -8,10 +8,11 @@
  * 2. Utilization of Shehu Transform for fractional calculus
  * 3. Application of Adomian Decomposition for nonlinear term handling
  * 
- * @since 1.0.4
+ * @since 1.0.5
  * 
  * @example
- * const { stadmSolver } = require('./solvers/stadmSolver');
+ * import { stadmSolver } from './solvers/stadmSolver.js';
+ * import logger from '../utils/logger.js';
  * 
  * const params = {
  *   initialCondition: 0,
@@ -19,9 +20,13 @@
  *   maxTerms: 10
  * };
  * 
- * stadmSolver(params).then(solution => {
- *   console.log(solution(1)); // Evaluate solution at t = 1
- * });
+ * try {
+ *   const solution = await stadmSolver(params);
+ *   const result = await solution(1); // Evaluate solution at t = 1
+ *   logger.info('STADM solution computed successfully', { result });
+ * } catch (error) {
+ *   logger.error('Error in STADM solver:', error);
+ * }
  * 
  * @see {@link https://www.sciencedirect.com/science/article/pii/S2226719X19300202|Shehu Transform}
  * for more information on the Shehu Transform.
@@ -31,17 +36,31 @@
  * for an overview of the Shehu Transform Adomian Decomposition Method (STADM).
  */
 
-const { shehuTransform, inverseShehuTransform } = require('./shehuTransform');
-const { generateAdomianPolynomials } = require('./adomianDecomposition');
+import { shehuTransform, inverseShehuTransform } from './shehuTransform.js';
+import { generateAdomianPolynomials } from './adomianDecomposition.js';
+import { validateNumber, validatePositiveInteger } from '../utils/validation.js';
+import logger from '../utils/logger.js';
 
 /**
  * Solves the fractional Sine-Gordon equation.
- * @param {Object} params - Parameters for the solver, including initial conditions, fractional orders, and maximum terms.
+ * @async
+ * @param {Object} params - Parameters for the solver.
+ * @param {number} params.initialCondition - Initial condition u(0).
+ * @param {number} params.alpha - Fractional order of the derivative.
+ * @param {number} params.maxTerms - Maximum number of terms in the series solution.
  * @returns {Promise<Function>} - A promise that resolves to the solution function u(t).
+ * @throws {Error} If input validation fails or computation encounters an error.
  */
-async function stadmSolver(params) {
+export async function stadmSolver(params) {
   try {
     const { initialCondition, alpha, maxTerms } = params;
+
+    validateNumber(initialCondition, 'Initial condition');
+    validateNumber(alpha, 'Fractional order', 0, 1);
+    validatePositiveInteger(maxTerms, 'Maximum terms');
+
+    logger.info('Starting STADM solver with parameters:', params);
+
     const uSeries = [];
 
     // Initial approximation u0(t)
@@ -56,24 +75,31 @@ async function stadmSolver(params) {
       const U_n_s = await shehuTransform((t) => A_n(t));
 
       // Solve algebraic equation in Shehu domain (implementation depends on the specific equation)
+      // This is a placeholder and should be replaced with the actual equation solving logic
+      const U_n_s_solved = (s) => U_n_s(s) / (s * s + 1);
 
       // Inverse Shehu Transform to get u_n(t)
-      const u_n = await inverseShehuTransform(U_n_s);
+      const u_n = await inverseShehuTransform(U_n_s_solved);
 
       uSeries[n] = u_n;
     }
 
     // Sum the series to get the approximate solution
-    return async (t) => {
+    const solution = async (t) => {
+      validateNumber(t, 'Time variable');
       let sum = 0;
       for (let n = 0; n < maxTerms; n++) {
-        sum += await Promise.resolve(uSeries[n](t));
+        sum += await uSeries[n](t);
       }
       return sum;
     };
+
+    logger.info('STADM solver completed successfully');
+    return solution;
   } catch (error) {
-    throw new Error(`Error in STADM Solver: ${error.message}`);
+    logger.error('Error in STADM Solver:', error);
+    throw new Error(`STADM Solver failed: ${error.message}`);
   }
 }
 
-module.exports = { stadmSolver };
+export default stadmSolver;

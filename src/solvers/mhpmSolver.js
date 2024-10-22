@@ -1,143 +1,89 @@
 /**
  * @module solvers/mhpmSolver
- * @description Solves nonlinear fractional differential equations using the Modified Homotopy Perturbation Method (MHPM).
- * This module implements an advanced numerical technique for solving complex nonlinear fractional differential equations.
- * It combines the concepts of homotopy from topology and perturbation methods to provide accurate approximate solutions.
- * 
- * @since 1.0.6
- * 
+ * @description Implements the Modified Homotopy Perturbation Method (MHPM) for solving nonlinear fractional differential equations.
+ * This module achieves its intent by:
+ * - Utilizing Bernstein polynomials and operational matrices for approximation
+ * - Implementing an iterative scheme to obtain approximate solutions
+ * - Supporting models like the fractional Sine-Gordon equation and advection-diffusion equations
+ * - Ensuring compatibility with the existing solver interface
+ *
+ * The MHPM combines homotopy and perturbation methods to solve complex fractional differential equations effectively.
+ *
+ * @since 1.0.16
+ *
  * @example
- * // Example usage of the mhpmSolver function:
- * const solution = await mhpmSolver({
- *   B_t: (t) => {
- *     // Time operational matrix implementation
- *     return []; // Placeholder implementation
- *   },
- *   B_x: (x) => {
- *     // Space operational matrix implementation
- *     return []; // Placeholder implementation
- *   },
- *   D_t: (t, alpha) => {
- *     // Time fractional derivative matrix implementation
- *     return []; // Placeholder implementation
- *   },
- *   D_x: (x, beta) => {
- *     // Space fractional derivative matrix implementation
- *     return []; // Placeholder implementation
- *   },
- *   params: {
- *     alpha: 0.5,
- *     beta: 0.5,
- *     steps: 100,
- *     tolerance: 1e-6,
- *     maxIterations: 1000
- *   }
- * });
- * 
- * @see {@link https://www.sciencedirect.com/science/article/pii/S0898122110005536|Modified homotopy perturbation method for solving fractional differential equations}
- * for more information on the MHPM algorithm.
+ * const solution = await mhpmSolver(params);
  */
-const math = require('mathjs');
-const { validateInputs } = require('./utils/inputValidation');
-const { performMHPMIteration } = require('./utils/mhpmUtils');
-const { SystemTypes } = require('@types/system');
+
+import { generateOperationalMatrices } from './operationalMatrices.js';
+import { bernsteinPolynomials } from './bernsteinPolynomials.js';
+import { validateParams } from '../utils/validation.js';
+import logger from '../utils/logger.js';
+import { computeNextCoefficients, calculateError, constructSolution } from '../utils/mhpmUtils.js';
 
 /**
- * Solves a nonlinear fractional differential equation using the Modified Homotopy Perturbation Method (MHPM).
- * @param {Object} options - The options object containing all necessary parameters and functions.
- * @param {Function} options.B_t - Time operational matrix
- * @param {Function} options.B_x - Space operational matrix
- * @param {Function} options.D_t - Time fractional derivative matrix
- * @param {Function} options.D_x - Space fractional derivative matrix
- * @param {Object} options.params - Additional parameters
- * @param {number} options.params.alpha - Time fractional order
- * @param {number} options.params.beta - Space fractional order
- * @param {number} options.params.steps - Number of steps for discretization
- * @param {number} options.params.tolerance - Convergence tolerance
- * @param {number} options.params.maxIterations - Maximum number of iterations
- * @returns {Promise<SystemTypes.Core.CoreServiceResult<Array<{x: number, y: number}>>>} - Approximate solution vector wrapped in a CoreServiceResult
- * @throws {Error} If input validation fails or computation encounters an error
- * @since 1.0.7
+ * Solves a fractional differential equation using the Modified Homotopy Perturbation Method (MHPM).
+ * @async
+ * @param {Object} params - Parameters for the solver.
+ * @param {Function} params.equation - The fractional differential equation to solve.
+ * @param {Object} params.initialConditions - Initial conditions for the problem.
+ * @param {number} params.alpha - Time fractional order.
+ * @param {number} params.beta - Space fractional order.
+ * @param {number} params.polynomialDegree - Degree of Bernstein polynomials.
+ * @param {number} [params.tolerance=1e-6] - Convergence tolerance.
+ * @param {number} [params.maxIterations=100] - Maximum number of iterations.
+ * @param {number} [params.steps=100] - Number of steps for the solution.
+ * @returns {Promise<Array<{ x: number, y: number }>>} - Approximate solution as an array of data points.
+ * @since 1.0.16
  */
-async function mhpmSolver(options) {
+async function mhpmSolver(params) {
   try {
-    const validationResult = validateInputs(options);
-    if (!validationResult.success) {
-      throw new Error(`Input validation failed: ${validationResult.error}`);
-    }
+    validateParams(params);
+    const {
+      equation,
+      initialConditions,
+      alpha,
+      beta,
+      polynomialDegree,
+      tolerance = 1e-6,
+      maxIterations = 100,
+      steps = 100,
+    } = params;
 
-    const { B_t, B_x, D_t, D_x, params } = options;
-    const { steps, tolerance, maxIterations, alpha, beta } = params;
+    // Generate Bernstein polynomials
+    const B = bernsteinPolynomials(polynomialDegree);
+    // Generate operational matrix
+    const D = generateOperationalMatrices('time', alpha, 1, polynomialDegree);
 
-    let solution = Array(steps).fill().map((_, i) => ({ x: i / (steps - 1), y: 0 }));
+    // Initialize coefficients
+    let coefficients = Array(polynomialDegree + 1).fill(0);
     let iteration = 0;
     let error = Infinity;
 
-    while (iteration < maxIterations && error > tolerance) {
-      const newSolution = await performMHPMIteration(solution, B_t, B_x, D_t, D_x, { alpha, beta, steps });
-      error = math.max(newSolution.map((val, i) => Math.abs(val.y - solution[i].y)));
-      solution = newSolution;
+    // Iterative process
+    while (error > tolerance && iteration < maxIterations) {
       iteration++;
+      // Compute the next approximation
+      const newCoefficients = await computeNextCoefficients(coefficients, D, equation, initialConditions, params);
+      error = calculateError(coefficients, newCoefficients);
+      coefficients = newCoefficients;
 
-      if (iteration % 100 === 0) {
-        console.log(`MHPM iteration ${iteration}: current error = ${error}`);
-      }
+      logger.debug(`Iteration ${iteration}: error = ${error}`);
     }
 
-    if (iteration === maxIterations) {
-      console.warn('MHPM solver reached maximum iterations without converging');
+    if (error > tolerance) {
+      throw new Error('MHPM did not converge within the maximum number of iterations.');
     }
 
-    return {
-      success: true,
-      data: solution,
-      message: `MHPM solver completed in ${iteration} iterations with final error ${error}`
-    };
+    // Construct the approximate solution
+    const solution = constructSolution(B, coefficients, { steps });
+
+    logger.info('MHPM solver completed successfully', { iterations: iteration });
+    return solution;
   } catch (error) {
-    console.error('Error in MHPM solver:', error);
-    return {
-      success: false,
-      error: error.message,
-      message: 'MHPM solver failed to compute solution'
-    };
+    logger.error('Error in MHPM solver', error);
+    throw error;
   }
 }
 
-/**
- * Performs a single iteration of the MHPM algorithm.
- * @param {Array<{x: number, y: number}>} currentSolution - Current solution vector
- * @param {Function} B_t - Time operational matrix
- * @param {Function} B_x - Space operational matrix
- * @param {Function} D_t - Time fractional derivative matrix
- * @param {Function} D_x - Space fractional derivative matrix
- * @param {Object} params - Parameters for the iteration
- * @param {number} params.alpha - Time fractional order
- * @param {number} params.beta - Space fractional order
- * @param {number} params.steps - Number of steps for discretization
- * @returns {Promise<Array<{x: number, y: number}>>} - Updated solution vector
- * @throws {Error} If computation encounters an error
- * @since 1.0.7
- */
-async function performMHPMIteration(currentSolution, B_t, B_x, D_t, D_x, params) {
-  const { alpha, beta, steps } = params;
-
-  try {
-    const B_t_matrix = await B_t(currentSolution.map(point => point.x));
-    const B_x_matrix = await B_x(currentSolution.map(point => point.x));
-    const D_t_matrix = await D_t(currentSolution.map(point => point.x), alpha);
-    const D_x_matrix = await D_x(currentSolution.map(point => point.x), beta);
-
-    // Implement the core MHPM algorithm here
-    // This is a placeholder for the actual implementation
-    const newSolution = currentSolution.map((point, i) => {
-      const newY = point.y + 0.1 * (B_t_matrix[i] + B_x_matrix[i] - D_t_matrix[i] - D_x_matrix[i]);
-      return { x: point.x, y: newY };
-    });
-
-    return newSolution;
-  } catch (error) {
-    throw new Error(`Error in MHPM iteration: ${error.message}`);
-  }
-}
-
-module.exports = { mhpmSolver, performMHPMIteration };
+export { mhpmSolver };

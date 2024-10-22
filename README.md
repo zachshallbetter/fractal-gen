@@ -7,18 +7,21 @@ This Node.js application generates fractals using advanced mathematical models a
 ### Key Features
 
 - **Advanced Mathematical Models**: Utilizes models such as the Nonlinear space–time fractal–fractional advection–diffusion–reaction equations, interpersonal relationships, two-scale population model, and fractional sine-Gordon model.
-- **Diverse Numerical Methods**: Supports a variety of methods including the Laplace-Adomian Decomposition Method (LADM), Shehu Transform-Adomian Decomposition Method (STADM), He's Fractional Derivative, Fractional Complex Transform, He–Laplace Method, Fractal–Fractional Derivatives (ARL and ABC), Bernstein Polynomials and Operational Matrices, Modified Homotopy Perturbation Method, and Lagrangian Polynomial Interpolation.
-- **Reverse Engineering**: Capable of inferring original parameters from generated fractal data using sophisticated optimization techniques and analytical approximations.
+- **Diverse Numerical Methods**: Supports methods including LADM, STADM, He's Fractional Derivative, Fractional Complex Transform, He–Laplace Method, Fractal–Fractional Derivatives (ARL and ABC), Bernstein Polynomials and Operational Matrices, Modified Homotopy Perturbation Method, and Lagrangian Polynomial Interpolation.
+- **Reverse Engineering**: Infers original parameters from generated fractal data using optimization techniques and analytical approximations.
 - **Interactive Web Interface**: Provides a user-friendly web interface for real-time fractal generation and visualization.
 - **Dynamic Method Selection**: Automatically updates available methods based on the selected model.
 - **Real-time Parameter Adjustment**: Allows users to adjust fractal parameters and see results instantly.
 - **Canvas Rendering**: Utilizes HTML5 Canvas for efficient fractal visualization.
 - **Web Server**: Provides a web server for generating fractals on-demand, supporting multiple models and methods.
-- **Interactive Visualizations**: Generates both static images and interactive plots to visualize the fractals, enhancing user engagement and understanding.
+- **Interactive Visualizations**: Generates both static images and interactive plots to visualize fractals.
+- **Parallel Computation**: Utilizes worker threads for efficient processing of complex calculations.
+- **Logging**: Implements structured logging for better observability in various runtime environments.
+- **Input Validation**: Ensures comprehensive parameter validation for all models and methods.
 
 ## Installation
 
-Ensure you have Node.js version **14.0.0 or higher** installed. This application uses ES6 modules and requires modern JavaScript features.
+Ensure you have Node.js version **14.0.0 or higher** installed. This application uses ES modules.
 
 1. **Clone the Repository:**
 
@@ -33,17 +36,15 @@ Ensure you have Node.js version **14.0.0 or higher** installed. This application
    npm install
    ```
 
-   Note: The `canvas` package might require additional native libraries. If you encounter issues, please refer to the [node-canvas installation guide](https://github.com/Automattic/node-canvas#installation).
+   Note: The `canvas` package might require additional native libraries. Refer to the [node-canvas installation guide](https://github.com/Automattic/node-canvas#installation) if needed.
 
 3. **Verify Installation:**
 
-   After installation, you can verify that everything is set up correctly by running:
+   Run the test suite:
 
    ```bash
    npm test
    ```
-
-   This will run the test suite and ensure all dependencies are working as expected.
 
 ## Usage
 

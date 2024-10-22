@@ -1,7 +1,6 @@
 /**
  * @module models/interpersonalRelationshipsModel
  * @description Solves the fractal–fractional interpersonal relationships model using Lagrangian polynomial interpolation.
- * @since 1.0.2
  * 
  * This model solves the fractal-fractional interpersonal relationships model using Lagrangian polynomial interpolation. It achieves its intent by:
  * - Utilizing a fractal-fractional solver for complex dynamics
@@ -9,11 +8,14 @@
  * - Returning the solution as data points representing relationship dynamics over time
  * - Implementing robust error handling and logging
  * - Validating input parameters
+ * - Leveraging parallel computation for improved performance
  * 
  * The implementation leverages fractal-fractional calculus to capture the intricate and potentially chaotic nature
  * of interpersonal relationships, allowing for more nuanced modeling of human interactions.
  * 
  * @example
+ * import { solve } from './interpersonalRelationshipsModel.js';
+ * 
  * const data = await solve({
  *   alpha: 0.5,
  *   gamma: 0.5,
@@ -23,13 +25,14 @@
  *   timeEnd: 10,
  * });
  * 
- * @input {{alpha: number, gamma: number, kernel: (t: number) => number, initialCondition: (t: number) => number, timeSteps: number, timeEnd: number}}
- * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
+ * @since 1.0.5
  */
 
 import { fractalFractionalSolver } from '../solvers/fractalFractionalSolver.js';
 import { validateParameters, validateNumber, validateFunction } from '../utils/validation.js';
 import logger from '../utils/logger.js';
+import { ParallelComputation } from '../utils/parallelComputation.js';
+import { createInteractivePlot, generateFractalImage } from '../utils/visualization.js';
 
 /**
  * Solves the interpersonal relationships model using Lagrangian polynomial interpolation.
@@ -64,8 +67,17 @@ async function solve(params) {
     };
 
     logger.info('Solving interpersonal relationships model', { params: modelParams });
-    const data = await fractalFractionalSolver(modelParams);
+
+    const parallelComputation = new ParallelComputation();
+    const [data] = await parallelComputation.executeTasks([
+      () => fractalFractionalSolver(modelParams)
+    ]);
+
     logger.info('Interpersonal relationships model solved successfully');
+
+    // Generate visualizations
+    await createInteractivePlot(data, params);
+    await generateFractalImage(data, params);
 
     return data;
   } catch (error) {

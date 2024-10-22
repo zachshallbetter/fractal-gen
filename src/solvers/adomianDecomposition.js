@@ -13,7 +13,7 @@
  * - Generates solution data for visualization and analysis purposes.
  * 
  * The implementation is designed to be efficient and suitable for edge computing environments, 
- * utilizing asynchronous operations where possible to ensure non-blocking execution.
+ * utilizing asynchronous operations and parallel computation where possible to ensure non-blocking execution.
  * 
  * @example
  * // Generate Adomian polynomials for the sine function
@@ -33,11 +33,13 @@
  *   spaceSteps: 100
  * });
  * 
- * @since 1.0.9
+ * @since 1.0.10
  */
 
-const { factorial, combination } = require('../utils/mathUtils.js');
-const { validatePositiveInteger, validateFunction, validateNumber } = require('../utils/validation.js');
+import { factorial, combination, sin, exp } from '../utils/mathUtils.js';
+import { ParallelComputation } from '../utils/parallelComputation.js';
+import logger from '../utils/logger.js';
+import { validatePositiveInteger, validateFunction, validateNumber } from '../utils/validation.js';
 
 /**
  * Generates Adomian polynomials for a given nonlinear term.
@@ -48,28 +50,34 @@ const { validatePositiveInteger, validateFunction, validateNumber } = require('.
  * @throws {Error} If input validation fails.
  */
 async function generateAdomianPolynomials(nonlinearTerm, n) {
-  validateFunction(nonlinearTerm, 'nonlinearTerm');
-  validatePositiveInteger(n, 'n');
-  
-  const polynomials = [];
-  const uSeries = [async (t) => t]; // Initial condition
-  
-  for (let i = 0; i < n; i++) {
-    polynomials.push(async (t) => {
-      let sum = 0;
-      for (let k = 0; k <= i; k++) {
-        const u_k = await uSeries[k](t);
-        const coefficient = combination(i, k);
-        sum += coefficient * nonlinearTerm(u_k);
-      }
-      return (1 / factorial(i)) * sum;
-    });
+  try {
+    validateFunction(nonlinearTerm, 'nonlinearTerm');
+    validatePositiveInteger(n, 'n');
     
-    // Update uSeries for the next iteration
-    uSeries.push(polynomials[i]);
+    const polynomials = [];
+    const uSeries = [async (t) => t]; // Initial condition
+    
+    for (let i = 0; i < n; i++) {
+      polynomials.push(async (t) => {
+        let sum = 0;
+        for (let k = 0; k <= i; k++) {
+          const u_k = await uSeries[k](t);
+          const coefficient = combination(i, k);
+          sum += coefficient * nonlinearTerm(u_k);
+        }
+        return (1 / factorial(i)) * sum;
+      });
+      
+      // Update uSeries for the next iteration
+      uSeries.push(polynomials[i]);
+    }
+    
+    logger.info(`Generated ${n} Adomian polynomials successfully`);
+    return polynomials;
+  } catch (error) {
+    logger.error('Error in generating Adomian polynomials', error);
+    throw error;
   }
-  
-  return polynomials;
 }
 
 /**
@@ -85,6 +93,7 @@ async function generateAdomianPolynomials(nonlinearTerm, n) {
  * @param {number} params.spaceEnd - End point in space for the solution
  * @param {number} params.timeSteps - Number of time steps
  * @param {number} params.spaceSteps - Number of space steps
+ * @param {boolean} [params.useParallelComputation=false] - Whether to use parallel computation
  * @returns {Promise<Object>} - Solution data
  */
 async function solveLADM(params) {
@@ -99,36 +108,53 @@ async function solveLADM(params) {
     validatePositiveInteger(params.timeSteps, 'timeSteps');
     validatePositiveInteger(params.spaceSteps, 'spaceSteps');
 
+    logger.info('Starting LADM solver', { params });
+
     const polynomials = await generateAdomianPolynomials(params.nonlinearTerm, params.maxTerms);
     const solutionData = [];
 
     const dt = params.timeEnd / params.timeSteps;
     const dx = params.spaceEnd / params.spaceSteps;
 
-    for (let i = 0; i <= params.timeSteps; i++) {
+    const computeTask = async (i, j) => {
       const t = i * dt;
-      for (let j = 0; j <= params.spaceSteps; j++) {
-        const x = j * dx;
-        let value = params.initialCondition(t);
-        
-        for (let k = 0; k < params.maxTerms; k++) {
-          value += await polynomials[k](t) * Math.pow(x, params.beta * k) / factorial(k);
-        }
+      const x = j * dx;
+      let value = params.initialCondition(t);
+      
+      for (let k = 0; k < params.maxTerms; k++) {
+        value += await polynomials[k](t) * Math.pow(x, params.beta * k) / factorial(k);
+      }
 
-        solutionData.push({
-          x: x,
-          y: t,
-          value: value
-        });
+      return { x, y: t, value };
+    };
+
+    if (params.useParallelComputation) {
+      const parallelComputation = new ParallelComputation();
+      const tasks = [];
+
+      for (let i = 0; i <= params.timeSteps; i++) {
+        for (let j = 0; j <= params.spaceSteps; j++) {
+          tasks.push(() => computeTask(i, j));
+        }
+      }
+
+      solutionData.push(...await parallelComputation.executeTasks(tasks));
+    } else {
+      for (let i = 0; i <= params.timeSteps; i++) {
+        for (let j = 0; j <= params.spaceSteps; j++) {
+          solutionData.push(await computeTask(i, j));
+        }
       }
     }
 
+    logger.info('LADM solution computed successfully');
     return {
       success: true,
       data: solutionData,
       message: 'LADM solution computed successfully.'
     };
   } catch (error) {
+    logger.error('Error in LADM solver', error);
     return {
       success: false,
       data: null,
@@ -137,7 +163,4 @@ async function solveLADM(params) {
   }
 }
 
-module.exports = {
-  generateAdomianPolynomials,
-  solveLADM
-};
+export { generateAdomianPolynomials, solveLADM };

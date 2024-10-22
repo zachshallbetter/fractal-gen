@@ -3,16 +3,19 @@
  * @description Handles the output of results, including saving data files, generating visualizations,
  * and validating results. Integrates with parallel computation for improved performance.
  * 
- * - Manages data output, including JSON files and visualizations
- * - Supports parallel computation for efficient result processing
- * - Integrates with validation and visualization modules for comprehensive output handling
- * - Provides extensible architecture for future enhancements and integrations
+ * This module achieves its intent by:
+ * - Managing data output, including JSON files and visualizations
+ * - Supporting parallel computation for efficient result processing
+ * - Integrating with validation and visualization modules for comprehensive output handling
+ * - Providing extensible architecture for future enhancements and integrations
+ * - Implementing error handling and logging for robust operation
+ * - Offering flexible output formats to accommodate various data types and structures
  * 
  * @example
  * import { outputResults } from './outputHandler.js';
  * await outputResults(data, params, analyticalSolution);
  * 
- * @since 1.0.10
+ * @since 1.0.11
  */
 
 import fs from 'fs/promises';
@@ -32,6 +35,7 @@ import logger from './logger.js';
  * @param {Function} [analyticalSolution] - The analytical solution function, if available.
  * @throws {Error} If file operations or visualization generation fails.
  * @returns {Promise<void>}
+ * @since 1.0.12
  */
 export async function outputResults(data, params, analyticalSolution) {
   const parallelComputation = new ParallelComputation();
@@ -56,8 +60,8 @@ export async function outputResults(data, params, analyticalSolution) {
       () => createInteractivePlot(data, params),
       () => createFractalImage(data, params)
     ];
-    await parallelComputation.executeTasks(visualizationTasks);
-    logger.info('Visualizations generated successfully');
+    const [plotPath, imagePath] = await parallelComputation.executeTasks(visualizationTasks);
+    logger.info('Visualizations generated successfully', { plotPath, imagePath });
 
     // Validate results if analytical solution is provided
     if (typeof analyticalSolution === 'function') {
@@ -66,7 +70,11 @@ export async function outputResults(data, params, analyticalSolution) {
       await fs.appendFile(dataFilePath, `\nMaximum error: ${maxError}`);
     }
 
-    logger.info('Results saved and visualizations generated successfully.');
+    logger.info('Results saved and visualizations generated successfully.', {
+      dataFilePath,
+      plotPath,
+      imagePath
+    });
   } catch (error) {
     logger.error('Error in outputResults', error, { params });
     throw error;

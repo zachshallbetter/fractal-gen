@@ -3,11 +3,15 @@
  * @description Provides functionality to generate fractal data based on input parameters.
  * Acts as a service layer between the web server/CLI and the model selector.
  * Ensures consistent fractal generation across different application entry points.
- * @since 1.0.3
+ * @since 1.0.4
  */
 
 import { generateFractalData, getAvailableModels, getAvailableMethods } from './models/modelSelector.js';
-import { validateParameters } from './utils/validation.js';
+import { validateParameters, validateArray, validateObject, ValidationError } from './utils/validation.js';
+import { ParallelComputation } from './utils/parallelComputation.js';
+import logger from './utils/logger.js';
+import { createFractalImage } from './visualizations/imageGenerator.js';
+import { createInteractivePlot as createPlot } from './visualizations/plotGenerator.js';
 
 /**
  * Processes fractal request and generates fractal data.
@@ -18,14 +22,14 @@ async function processFractalRequest(params) {
   try {
     validateParameters(params);
     const data = await generateFractalData(params);
-    console.log('Fractal generation successful.');
+    logger.info('Fractal generation successful.');
     return {
       success: true,
       data: data,
       message: 'Fractal data generated successfully'
     };
   } catch (error) {
-    console.error('Failed to generate fractal data:', error);
+    logger.error('Failed to generate fractal data:', error);
     return {
       success: false,
       error: error instanceof Error ? error : new Error('Unknown error occurred'),
@@ -52,4 +56,4 @@ function getMethods(model) {
   return getAvailableMethods(model);
 }
 
-export { processFractalRequest, getModels, getMethods };
+export { processFractalRequest, getModels, getMethods, createFractalImage, createPlot };
