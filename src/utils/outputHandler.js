@@ -9,31 +9,36 @@
  * - Provides extensible architecture for future enhancements and integrations
  * 
  * @example
- * const { outputResults } = require('./outputHandler');
+ * import { outputResults } from './outputHandler.js';
  * await outputResults(data, params, analyticalSolution);
  * 
- * @since 1.0.8
+ * @since 1.0.10
  */
 
 import fs from 'fs/promises';
 import path from 'path';
-import { createInteractivePlot } from '../visualizations/plotGenerator';
-import { createFractalImage } from '../visualizations/imageGenerator';
-import { validateResults } from './validators';
-import { ParallelComputation } from './parallelComputation';
+import { createInteractivePlot } from '../visualizations/plotGenerator.js';
+import { createFractalImage } from '../visualizations/imageGenerator.js';
+import { validateResults } from './validators.js';
+import { ParallelComputation } from './parallelComputation.js';
+import logger from './logger.js';
 
 /**
  * Outputs and validates the results of fractal generation.
  * @async
+ * @function
  * @param {Array<{x: number, y: number}>} data - The generated fractal data.
  * @param {Object} params - Parameters used in fractal generation.
  * @param {Function} [analyticalSolution] - The analytical solution function, if available.
  * @throws {Error} If file operations or visualization generation fails.
+ * @returns {Promise<void>}
  */
-async function outputResults(data, params, analyticalSolution) {
+export async function outputResults(data, params, analyticalSolution) {
   const parallelComputation = new ParallelComputation();
 
   try {
+    logger.info('Starting output process', { params });
+
     // Ensure directories exist
     await Promise.all([
       fs.mkdir('data', { recursive: true }),
@@ -44,6 +49,7 @@ async function outputResults(data, params, analyticalSolution) {
     // Save data to file
     const dataFilePath = path.join('data', `fractalData_${params.model}_${Date.now()}.json`);
     await fs.writeFile(dataFilePath, JSON.stringify({ data, params }, null, 2));
+    logger.info(`Data saved to file: ${dataFilePath}`);
 
     // Generate visualizations in parallel
     const visualizationTasks = [
@@ -51,19 +57,18 @@ async function outputResults(data, params, analyticalSolution) {
       () => createFractalImage(data, params)
     ];
     await parallelComputation.executeTasks(visualizationTasks);
+    logger.info('Visualizations generated successfully');
 
     // Validate results if analytical solution is provided
     if (typeof analyticalSolution === 'function') {
       const maxError = validateResults(data, analyticalSolution, params);
-      console.log(`Validation complete. Maximum error: ${maxError}`);
+      logger.info(`Validation complete. Maximum error: ${maxError}`, { maxError });
       await fs.appendFile(dataFilePath, `\nMaximum error: ${maxError}`);
     }
 
-    console.log(`Results saved and visualizations generated successfully.`);
+    logger.info('Results saved and visualizations generated successfully.');
   } catch (error) {
-    console.error(`Error in outputResults: ${error.message}`);
+    logger.error('Error in outputResults', error, { params });
     throw error;
   }
 }
-
-export { outputResults };

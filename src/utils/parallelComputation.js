@@ -8,11 +8,12 @@
  * - Implementing error handling and graceful degradation to sequential processing if parallel execution is unavailable
  * - Optimizing resource usage based on available system resources
  * 
- * @since 1.0.7
+ * @since 1.0.8
  * 
  * @example
  * // Example usage of ParallelComputation:
  * import { ParallelComputation } from './parallelComputation.js';
+ * import logger from './logger.js';
  * 
  * const parallelComputation = new ParallelComputation();
  * const tasks = [
@@ -23,17 +24,18 @@
  * 
  * try {
  *   const results = await parallelComputation.executeTasks(tasks);
- *   console.log('Parallel computation results:', results);
+ *   logger.info('Parallel computation results:', { results });
  * } catch (error) {
- *   console.error('Error in parallel computation:', error.message);
+ *   logger.error('Error in parallel computation:', error);
  * }
  * 
  * @see {@link https://nodejs.org/api/worker_threads.html|Node.js Worker Threads}
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API|Web Workers API}
  */
 
-const os = require('os');
-const { Worker } = require('worker_threads');
+import os from 'os';
+import { Worker } from 'worker_threads';
+import logger from './logger.js';
 
 /**
  * Class for managing parallel computations.
@@ -45,6 +47,7 @@ class ParallelComputation {
    */
   constructor(maxWorkers = os.cpus().length) {
     this.maxWorkers = maxWorkers;
+    logger.info(`ParallelComputation initialized with ${this.maxWorkers} max workers`);
   }
 
   /**
@@ -56,10 +59,14 @@ class ParallelComputation {
    */
   async executeTasks(tasks) {
     if (!Array.isArray(tasks) || tasks.length === 0) {
+      logger.error('Invalid tasks array provided');
       throw new Error('Invalid tasks array');
     }
 
-    const workerPool = this._createWorkerPool(Math.min(tasks.length, this.maxWorkers));
+    const workerCount = Math.min(tasks.length, this.maxWorkers);
+    logger.info(`Executing ${tasks.length} tasks with ${workerCount} workers`);
+
+    const workerPool = this._createWorkerPool(workerCount);
     const results = [];
 
     try {
@@ -67,7 +74,9 @@ class ParallelComputation {
         this._executeTaskInWorker(workerPool[index % workerPool.length], task)
       );
       results.push(...(await Promise.all(taskPromises)));
+      logger.info(`Successfully executed ${tasks.length} tasks in parallel`);
     } catch (error) {
+      logger.error('Parallel execution failed', error);
       throw new Error(`Parallel execution failed: ${error.message}`);
     } finally {
       this._terminateWorkers(workerPool);
@@ -83,6 +92,7 @@ class ParallelComputation {
    * @returns {Worker[]} - Array of created workers.
    */
   _createWorkerPool(count) {
+    logger.info(`Creating worker pool with ${count} workers`);
     return Array.from({ length: count }, () => new Worker(`${__dirname}/worker.js`));
   }
 
@@ -97,8 +107,14 @@ class ParallelComputation {
   _executeTaskInWorker(worker, task) {
     return new Promise((resolve, reject) => {
       worker.postMessage({ task: task.toString() });
-      worker.once('message', resolve);
-      worker.once('error', reject);
+      worker.once('message', (result) => {
+        logger.info('Task completed successfully in worker');
+        resolve(result);
+      });
+      worker.once('error', (error) => {
+        logger.error('Error in worker execution', error);
+        reject(error);
+      });
     });
   }
 
@@ -108,8 +124,9 @@ class ParallelComputation {
    * @param {Worker[]} workerPool - Array of workers to terminate.
    */
   _terminateWorkers(workerPool) {
+    logger.info(`Terminating ${workerPool.length} workers`);
     workerPool.forEach(worker => worker.terminate());
   }
 }
 
-module.exports = { ParallelComputation };
+export { ParallelComputation };

@@ -3,7 +3,7 @@
  * @description Provides utility functions for validating input parameters and functions.
  * This module is crucial for ensuring the integrity and correctness of inputs across various mathematical operations and transformations.
  * 
- * @since 1.0.6
+ * @since 1.0.7
  * 
  * @example
  * // Example usage of validateFunction:
@@ -49,7 +49,7 @@ function validateNumber(value, paramName = 'Parameter', min = Number.MIN_SAFE_IN
     throw new ValidationError(`${paramName} must be a valid number`);
   }
   if (value < min || value > max) {
-    throw new RangeError(`${paramName} must be between ${min} and ${max}`);
+    throw new ValidationRangeError(`${paramName} must be between ${min} and ${max}`);
   }
 }
 
@@ -86,11 +86,11 @@ class ValidationError extends Error {
   }
 }
 
-class RangeError extends ValidationError {
+class ValidationRangeError extends ValidationError {
   constructor(message) {
     super(message);
-    this.name = 'RangeError';
+    this.name = 'ValidationRangeError';
   }
 }
 
-export { validateFunction, validateNumber, validateResults, ValidationError, RangeError };
+export { validateFunction, validateNumber, validateResults, ValidationError, ValidationRangeError };

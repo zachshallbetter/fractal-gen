@@ -8,6 +8,19 @@
  * - Generating operational matrices for fractional derivatives
  * - Employing the MHPM (Modified Homotopy Perturbation Method) solver
  * - Returning a solution as data points
+ * 
+ * @example
+ * const data = await solve({
+ *   alpha: 0.5,
+ *   beta: 0.5,
+ *   gamma: 0.5,
+ *   polynomialDegree: 5,
+ *   timeEnd: 10,
+ *   spaceEnd: 1,
+ * });
+ * 
+ * @input {{alpha: number, beta: number, gamma: number, polynomialDegree: number, timeEnd: number, spaceEnd: number}}
+ * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
  */
 
 const { bernsteinPolynomials } = require('../solvers/bernsteinPolynomials');

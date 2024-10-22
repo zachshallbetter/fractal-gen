@@ -11,6 +11,17 @@
  * - Generating data points from the solution
  * 
  * The implementation is suitable for solving the two-scale population model with fractional derivatives, providing a robust approach to modeling complex population dynamics.
+ * 
+ * @example
+ * const data = await solve({
+ *   alpha: 0.5,
+ *   initialCondition: (t) => Math.sin(t),
+ *   timeSteps: 100,
+ *   timeEnd: 10,
+ * });
+ * 
+ * @input {{alpha: number, initialCondition: (t: number) => number, timeSteps: number, timeEnd: number}}
+ * @returns {Promise<Array<{ x: number, y: number }>>} - An array of data points representing the solution.
  */
 
 const { hesFractionalDerivative } = require('../solvers/hesFractionalDerivative');

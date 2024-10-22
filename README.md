@@ -18,7 +18,7 @@ This Node.js application generates fractals using advanced mathematical models a
 
 ## Installation
 
-Ensure you have Node.js version **14.0.0 or higher** installed. This application uses ES6 modules.
+Ensure you have Node.js version **14.0.0 or higher** installed. This application uses ES6 modules and requires modern JavaScript features.
 
 1. **Clone the Repository:**
 
@@ -27,42 +27,33 @@ Ensure you have Node.js version **14.0.0 or higher** installed. This application
    cd fractal-generator
    ```
 
-2. **Update `package.json`:**
-
-   Ensure that the `package.json` file includes the `"type": "module"` field to enable ES6 module support.
-
-   ```json
-   {
-     "name": "fractal-generator",
-     "version": "1.0.6",
-     "description": "A Node.js application for generating fractals using advanced mathematical models.",
-     "type": "module",
-     // ... existing content ...
-   }
-   ```
-
-3. **Install Dependencies:**
+2. **Install Dependencies:**
 
    ```bash
    npm install
    ```
 
+   Note: The `canvas` package might require additional native libraries. If you encounter issues, please refer to the [node-canvas installation guide](https://github.com/Automattic/node-canvas#installation).
+
+3. **Verify Installation:**
+
+   After installation, you can verify that everything is set up correctly by running:
+
+   ```bash
+   npm test
+   ```
+
+   This will run the test suite and ensure all dependencies are working as expected.
+
 ## Usage
 
 ### Command-Line Interface
 
-Run the application with customizable parameters to generate fractals. You can see those commands in `COMMANDS.md` file in the root of the project.
-
-The following command generates a fractal using the two-scale population model and the Laplace-Adomian Decomposition Method (LADM):
+To generate fractals using the command-line interface, run:
 
 ```bash
-node src/index.js --model twoScale --method LADM --alpha 0.5 --beta 0.5 --maxTerms 10 --initialCondition "sin(x)" --timeSteps 200 --timeEnd 50
+node src/index.js
 ```
-
-```bash
-Output file generated: output.png
-```
-
 
 ### Web Interface
 
@@ -72,15 +63,15 @@ To use the web interface, start the server with:
 node src/server.js
 ```
 
-```bash
-Server running on port 3000
-```
-
 Open your browser and navigate to `http://localhost:3000` to access the interactive fractal generator.
 
-## Contributing
+### Edge Computing
 
-We welcome contributions to improve the application. Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to submit improvements and bug fixes.
+You can use this application in edge computing environments by running the `edge.js` file. This will start a web server and you can access the fractal generator through your browser.
+
+```bash
+node src/edge.js
+```
 
 ## License
 
