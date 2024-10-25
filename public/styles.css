@@ -2,7 +2,7 @@
  * Fractal Generator Interface Styles
  * @module FractalGeneratorStyles
  * @description Provides styling for the interactive fractal generator interface.
- * @since 1.0.3
+ * @since 1.0.4
  */
 
 body {
@@ -53,7 +53,7 @@ label {
   font-weight: bold;
 }
 
-select, input[type="range"] {
+select, input[type="range"], input[type="text"] {
   width: 100%;
   padding: 8px;
   margin-top: 5px;
@@ -112,6 +112,12 @@ span[id$="Value"] {
   font-weight: normal;
 }
 
+/* Form styling */
+form {
+  width: 100%;
+  max-width: 600px;
+}
+
 @media (max-width: 600px) {
   .controls {
     padding: 15px;
@@ -120,4 +126,27 @@ span[id$="Value"] {
   input[type="range"] {
     max-width: 100%;
   }
+}
+
+.progress-container {
+  width: 100%;
+  height: 20px;
+  background-color: #f0f0f0;
+  border-radius: 10px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.progress-bar {
+  width: 0;
+  height: 100%;
+  background-color: #4CAF50;
+  transition: width 0.3s ease-in-out;
+}
+
+.progress-text {
+  text-align: center;
+  margin-top: 5px;
+  font-size: 14px;
+  color: #666;
 }

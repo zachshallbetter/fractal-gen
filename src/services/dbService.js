@@ -1,11 +1,11 @@
 /**
- * @module DatabaseService
+ * @module services/dbService
  * @description Provides database functionality optimized for edge runtime environments.
  * This module is designed to work efficiently with limited resources and provides
  * a database layer for persistent storage in edge computing scenarios.
  * 
  * Key features:
- * - PostgreSQL-based database operations
+ * - PostgreSQL-based database operations for fractal data storage
  * - Connection pooling for efficient resource utilization
  * - Support for parameterized queries to prevent SQL injection
  * - Error handling and logging for improved observability
@@ -13,30 +13,34 @@
  * - Integration with CacheService for improved performance
  * - Optimized for use in edge runtime environments
  * - Vercel KV integration for key-value storage
+ * - Support for storing and retrieving fractal models, methods and parameters
+ * - Integration with fractalService for data persistence
+ * - Support for storing generated fractal images and plots
  * 
  * @example
  * import { dbClient } from './dbService.js';
  * 
- * // Execute a query
- * const result = await dbClient.query('SELECT * FROM users WHERE id = $1', [userId]);
+ * // Store fractal generation results
+ * const result = await dbClient.storeFractalResult({
+ *   model: 'twoScale',
+ *   method: 'LADM',
+ *   params: { alpha: 0.9, beta: 0.9 },
+ *   data: fractalData
+ * });
  * 
- * // Use caching
- * const cachedResult = await dbClient.query('SELECT * FROM products', [], true, 600);
+ * // Retrieve fractal history
+ * const history = await dbClient.getFractalHistory();
  * 
- * // Perform a health check
- * const isHealthy = await dbClient.healthCheck();
+ * // Cache frequently accessed models
+ * const models = await dbClient.getCachedModels();
  * 
- * // Use Vercel KV
- * await dbClient.setKV('user_1_session', 'session_token_value');
- * const session = await dbClient.getKV('user_1_session');
- * 
- * @since 1.0.18
+ * @since 1.0.19
  */
 
 import pg from 'pg';
 import logger from '../utils/logger.js';
 import { cacheClient } from './cacheService.js';
-import { kv } from "@vercel/kv";
+import { createClient } from '@vercel/kv';
 
 const { Pool } = pg;
 
@@ -49,9 +53,16 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false
   },
-  max: 20, // maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // how long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 2000, // how long to wait when connecting a new client
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+// Custom KV client for caching fractal results
+const kv = createClient({
+  url: process.env.KV_REST_API_URL,
+  token: process.env.KV_REST_API_TOKEN,
+  automaticDeserialization: false,
 });
 
 pool.on('error', (err, client) => {
@@ -102,71 +113,64 @@ class DatabaseClient {
   }
 
   /**
-   * Sets a value in the Vercel KV store.
+   * Stores fractal generation results in the database.
    * @async
-   * @param {string} key - The key to set.
-   * @param {string} value - The value to set.
-   * @returns {Promise<void>}
-   * @throws {Error} If there's an issue setting the value.
+   * @param {Object} result - The fractal generation result
+   * @param {string} result.model - The fractal model used
+   * @param {string} result.method - The solving method used
+   * @param {Object} result.params - The parameters used
+   * @param {Array} result.data - The generated fractal data
+   * @returns {Promise<Object>} The stored result with ID
+   * @since 1.0.19
    */
-  async setKV(key, value) {
-    try {
-      await kv.set(key, value);
-      await logger.info('Set value in KV store', { key });
-    } catch (error) {
-      await logger.error('Error setting value in KV store', { key, error });
-      throw error;
-    }
+  async storeFractalResult(result) {
+    const { model, method, params, data } = result;
+    const query = `
+      INSERT INTO fractal_results (model, method, params, data, created_at)
+      VALUES ($1, $2, $3, $4, NOW())
+      RETURNING id
+    `;
+    const res = await this.query(query, [model, method, params, data]);
+    return { id: res.rows[0].id, ...result };
   }
 
   /**
-   * Gets a value from the Vercel KV store.
+   * Retrieves fractal generation history.
    * @async
-   * @param {string} key - The key to get.
-   * @returns {Promise<string|null>} The value from the KV store, or null if not found.
-   * @throws {Error} If there's an issue getting the value.
+   * @param {Object} [filters] - Optional filters for the query
+   * @param {number} [limit=10] - Maximum number of results to return
+   * @returns {Promise<Array>} Array of fractal generation results
+   * @since 1.0.19
    */
-  async getKV(key) {
-    try {
-      const value = await kv.get(key);
-      await logger.info('Got value from KV store', { key });
-      return value;
-    } catch (error) {
-      await logger.error('Error getting value from KV store', { key, error });
-      throw error;
-    }
+  async getFractalHistory(filters = {}, limit = 10) {
+    const query = `
+      SELECT * FROM fractal_results 
+      WHERE ($1::text IS NULL OR model = $1)
+      ORDER BY created_at DESC
+      LIMIT $2
+    `;
+    const res = await this.query(query, [filters.model, limit], true, 300);
+    return res.rows;
   }
 
   /**
-   * Acquires a new database client from the pool.
+   * Stores a generated fractal image or plot.
    * @async
-   * @returns {Promise<pg.PoolClient>} A database client.
-   * @throws {Error} If there's an issue acquiring a client.
+   * @param {string} type - Type of visualization ('image' or 'plot')
+   * @param {Buffer} data - The image/plot data
+   * @param {Object} metadata - Additional metadata
+   * @returns {Promise<Object>} The stored visualization metadata
+   * @since 1.0.19
    */
-  async getClient() {
-    try {
-      const client = await pool.connect();
-      const query = client.query;
-      const release = client.release;
-
-      // Set a timeout of 5 seconds, after which we will log this client's last query
-      const timeout = setTimeout(async () => {
-        await logger.error('A client has been checked out for more than 5 seconds!');
-        await logger.error(`The last executed query on this client was: ${client.lastQuery}`);
-      }, 5000);
-
-      // Monkey patch the query method to keep track of the last query executed
-      client.query = (...args) => {
-        client.lastQuery = args;
-        return query.apply(client, args);
-      };
-
-      client.release = () => {
-        clearTimeout(timeout);
-        client.query = query;
-        client.release = release;
-        return release.apply(client);
-      };
+  async storeVisualization(type, data, metadata) {
+    const query = `
+      INSERT INTO fractal_visualizations (type, data, metadata, created_at)
+      VALUES ($1, $2, $3, NOW())
+      RETURNING id
+    `;
+    const res = await this.query(query, [type, data, metadata]);
+    return { id: res.rows[0].id, type, metadata };
+  }
 
       return client;
     } catch (error) {
@@ -176,51 +180,49 @@ class DatabaseClient {
   }
 
   /**
-   * Ends the database connection pool.
+   * Fetches fractal data from the database with advanced filtering.
    * @async
-   * @returns {Promise<void>}
-   * @throws {Error} If there's an issue ending the pool.
+   * @param {Object} [options] - Query options and filters
+   * @returns {Promise<Array>} The filtered fractal data
+   * @since 1.0.19
    */
-  async end() {
+  async fetchFractalData(options = {}) {
     try {
-      await pool.end();
-      await logger.info('Database connection pool has ended');
-    } catch (error) {
-      await logger.error('Error ending database connection pool', error);
-      throw error;
-    }
-  }
+      const {
+        model,
+        method,
+        startDate,
+        endDate,
+        limit = 100,
+        offset = 0
+      } = options;
 
-  /**
-   * Performs a health check on the database connection.
-   * @async
-   * @returns {Promise<boolean>} True if the database is healthy, false otherwise.
-   */
-  async healthCheck() {
-    try {
-      await this.query('SELECT 1');
-      return true;
+      const query = `
+        SELECT f.*, 
+               v.data as visualization_data
+        FROM fractals f
+        LEFT JOIN fractal_visualizations v ON f.id = v.fractal_id
+        WHERE ($1::text IS NULL OR f.model = $1)
+          AND ($2::text IS NULL OR f.method = $2)
+          AND ($3::timestamp IS NULL OR f.created_at >= $3)
+          AND ($4::timestamp IS NULL OR f.created_at <= $4)
+        ORDER BY f.created_at DESC
+        LIMIT $5 OFFSET $6
+      `;
+
+      const result = await this.query(
+        query,
+        [model, method, startDate, endDate, limit, offset],
+        true,
+        300
+      );
+
+      return result.rows;
     } catch (error) {
-      await logger.error('Database health check failed', error);
-      return false;
+      logger.error('Error fetching fractal data:', error);
+      throw error;
     }
   }
 }
 
 export const dbClient = new DatabaseClient();
-
-/**
- * Fetches data from the database.
- *
- * @returns {Promise<any>} The data from the database.
- * @since 1.0.1
- */
-async function fetchData() {
-    try {
-        const data = await dbClient.query('SELECT * FROM fractals');
-        return data;
-    } catch (error) {
-        logger.error(error);
-        throw error;
-    }
-}

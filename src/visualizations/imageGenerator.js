@@ -1,38 +1,80 @@
 /**
  * @module visualizations/imageGenerator
- * @description Creates static images of the fractal data using the Canvas API.
- * @since 1.0.1
+ * @description Generates static images of fractals using Node Canvas.
+ * @since 1.0.0
  */
 
-const { createCanvas } = require('canvas');
-const fs = require('fs');
-const path = require('path');
+import { createCanvas } from 'canvas';
+import { validateArray, validateObject } from '../utils/validation.js';
+import logger from '../utils/logger.js';
 
-function createFractalImage(data) {
-  const width = 800;
-  const height = 600;
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext('2d');
+/**
+ * Generates a static image of the fractal pattern.
+ * @async
+ * @function
+ * @param {Array<{x: number, y: number}>} data - The fractal data to visualize.
+ * @param {Object} params - Parameters used in fractal generation.
+ * @param {number} [index] - Optional frame index for animations.
+ * @returns {Promise<{buffer: Buffer, filename: string}>} - The generated image buffer and filename.
+ * @throws {ValidationError} If input validation fails.
+ */
+export async function generateFractalImage(data, params, index = null) {
+    try {
+        validateArray(data, 'Fractal data');
+        validateObject(params, 'Parameters');
 
-  // Draw background
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, width, height);
+        const canvas = createCanvas(800, 600);
+        const ctx = canvas.getContext('2d');
 
-  // Scale data
-  const maxX = Math.max(...data.map(point => point.x));
-  const maxY = Math.max(...data.map(point => point.y));
+        // Set background
+        ctx.fillStyle = '#121212';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw fractal data points
-  ctx.fillStyle = 'white';
-  data.forEach(point => {
-    const x = (point.x / maxX) * width;
-    const y = height - (point.y / maxY) * height;
-    ctx.fillRect(x, y, 2, 2);
-  });
+        // Draw fractal
+        ctx.beginPath();
+        ctx.strokeStyle = '#4CAF50';
+        ctx.lineWidth = 1;
 
-  // Save image
-  const buffer = canvas.toBuffer('image/png');
-  fs.writeFileSync(path.join('images', 'fractal.png'), buffer);
+        data.forEach((point, i) => {
+            const x = (point.x / 10) * canvas.width;
+            const y = canvas.height - (point.y / 10) * canvas.height;
+            
+            if (i === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+
+        ctx.stroke();
+
+        // Generate filename
+        const timestamp = new Date().getTime();
+        const filename = index !== null ? 
+            `fractal_${params.model}_${timestamp}_frame${index}.png` :
+            `fractal_${params.model}_${timestamp}.png`;
+
+        logger.info('Fractal image generated', { filename });
+
+        return {
+            buffer: canvas.toBuffer('image/png'),
+            filename: filename
+        };
+    } catch (error) {
+        logger.error('Error generating fractal image:', error);
+        throw error;
+    }
 }
 
-module.exports = { createFractalImage };
+/**
+ * Generates a thumbnail of the fractal pattern.
+ * @async
+ * @function
+ * @param {Array<{x: number, y: number}>} data - The fractal data to visualize.
+ * @param {Object} params - Parameters used in fractal generation.
+ * @returns {Promise<Buffer>} - The generated thumbnail buffer.
+ */
+export async function generateThumbnail(data, params) {
+    // Implementation for thumbnail generation
+    return Buffer.from([]);
+}

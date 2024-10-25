@@ -6,7 +6,7 @@
  * fractional differential equations. It is optimized for edge runtime environments and integrates
  * with the database service for efficient data handling.
  * 
- * - Generates interactive plots for fractal data visualization
+ * - Generates interactive plots for fractal data visualization 
  * - Creates static images of fractal patterns
  * - Produces animations to show the evolution of fractals over time or parameter changes
  * - Integrates with parallel computation for efficient rendering of complex visualizations
@@ -32,16 +32,19 @@
  *   }
  * }
  * 
- * @since 1.1.3
+ * @since 1.1.4
  */
 
 import { createCanvas } from 'canvas';
 import fs from 'fs/promises';
 import path from 'path';
 import { validateArray, validateObject, ValidationError } from './validation.js';
-import { logger } from './logger.js';
+import logger from './logger.js';
 import { dbClient } from '../services/dbService.js';
 import { ParallelComputation } from './parallelComputation.js';
+import { generateFractalImage as generateImage } from './visualizations/imageGenerator.js';
+import { createInteractivePlot as createPlot } from './visualizations/plotGenerator.js';
+import { processFractalRequest } from '../services/fractalService.js';
 
 /**
  * Creates an interactive plot of fractal data.
@@ -57,13 +60,23 @@ export async function createInteractivePlot(data, params) {
     validateArray(data, 'Fractal data');
     validateObject(params, 'Parameters');
 
-    // Implementation for creating interactive plot
-    // This would typically involve using a client-side plotting library
-    const plotData = { /* plot data structure */ };
+    // Utilize the plotGenerator module for creating interactive plots
+    const plotData = await createPlot(data, params);
     logger.info('Interactive plot created successfully');
 
-    // Store plot data in database for later retrieval
-    await dbClient.query('INSERT INTO plots (data, params) VALUES ($1, $2)', [JSON.stringify(data), JSON.stringify(params)]);
+    // Store plot data in database using transaction
+    const client = await dbClient.getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('INSERT INTO plots (data, params, created_at) VALUES ($1, $2, NOW())', 
+        [JSON.stringify(data), JSON.stringify(params)]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     return plotData;
   } catch (error) {
@@ -86,38 +99,25 @@ export async function generateFractalImage(data, params) {
     validateArray(data, 'Fractal data');
     validateObject(params, 'Parameters');
 
-    const options = {
-      width: 800,
-      height: 600,
-      backgroundColor: '#000000',
-      pointColor: '#FFFFFF',
-      pointSize: 1
-    };
+    // Utilize the imageGenerator module for generating static images
+    const imageBuffer = await generateImage(data, params);
+    logger.info('Fractal image generated successfully');
 
-    const canvas = createCanvas(options.width, options.height);
-    const ctx = canvas.getContext('2d');
+    // Store image metadata in database using transaction
+    const client = await dbClient.getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('INSERT INTO images (filename, params, created_at) VALUES ($1, $2, NOW())', 
+        [imageBuffer.filename, JSON.stringify(params)]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
-    // Draw fractal on canvas
-    ctx.fillStyle = options.backgroundColor;
-    ctx.fillRect(0, 0, options.width, options.height);
-    ctx.fillStyle = options.pointColor;
-
-    data.forEach(point => {
-      ctx.beginPath();
-      ctx.arc(point.x * options.width, point.y * options.height, options.pointSize, 0, 2 * Math.PI);
-      ctx.fill();
-    });
-
-    const buffer = canvas.toBuffer('image/png');
-    const fileName = `fractalImage_${Date.now()}.png`;
-    await fs.writeFile(path.join('images', fileName), buffer);
-
-    logger.info('Fractal image saved successfully');
-
-    // Store image metadata in database
-    await dbClient.query('INSERT INTO images (filename, params) VALUES ($1, $2)', [fileName, JSON.stringify(params)]);
-
-    return buffer;
+    return imageBuffer;
   } catch (error) {
     logger.error('Error generating fractal image:', error);
     throw error;
@@ -140,7 +140,7 @@ export async function createFractalAnimation(dataFrames, params) {
 
     const parallelComputation = new ParallelComputation();
     const framePromises = dataFrames.map((frame, index) => 
-      parallelComputation.execute(() => generateAnimationFrame(frame, params, index))
+      parallelComputation.execute(() => generateImage(frame, params, index))
     );
 
     const frames = await Promise.all(framePromises);
@@ -151,9 +151,19 @@ export async function createFractalAnimation(dataFrames, params) {
     const animationPath = 'path/to/animation.mp4'; // Placeholder
     logger.info('Fractal animation created successfully');
 
-    // Store animation metadata in database
-    await dbClient.query('INSERT INTO animations (params, frame_count, file_path) VALUES ($1, $2, $3)', 
-      [JSON.stringify(params), dataFrames.length, animationPath]);
+    // Store animation metadata in database using transaction
+    const client = await dbClient.getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('INSERT INTO animations (params, frame_count, file_path, created_at) VALUES ($1, $2, $3, NOW())', 
+        [JSON.stringify(params), dataFrames.length, animationPath]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
 
     return animationPath;
   } catch (error) {
@@ -162,42 +172,15 @@ export async function createFractalAnimation(dataFrames, params) {
   }
 }
 
-/**
- * Generates a single frame for the fractal animation.
- * @async
- * @function
- * @param {Array<{x: number, y: number}>} frameData - The fractal data for a single frame.
- * @param {Object} params - Parameters used in fractal generation.
- * @param {number} frameIndex - The index of the current frame.
- * @returns {Promise<string>} - The path to the generated frame image.
- */
-export async function generateAnimationFrame(frameData, params, frameIndex) {
-  const options = {
-    width: 800,
-    height: 600,
-    backgroundColor: '#000000',
-    pointColor: '#FFFFFF',
-    pointSize: 1
-  };
+export async function generateVisualization(data, params) {
+  try {
+    // Generate visualizations
+    const imagePath = await generateFractalImage(data, params);
+    const plotPath = await createInteractivePlot(data, params);
 
-  const canvas = createCanvas(options.width, options.height);
-  const ctx = canvas.getContext('2d');
-
-  // Draw fractal frame on canvas
-  ctx.fillStyle = options.backgroundColor;
-  ctx.fillRect(0, 0, options.width, options.height);
-  ctx.fillStyle = options.pointColor;
-
-  frameData.forEach(point => {
-    ctx.beginPath();
-    ctx.arc(point.x * options.width, point.y * options.height, options.pointSize, 0, 2 * Math.PI);
-    ctx.fill();
-  });
-
-  const buffer = canvas.toBuffer('image/png');
-  const fileName = `fractal_frame_${params.model}_${frameIndex.toString().padStart(5, '0')}.png`;
-  const filePath = path.join('images', fileName);
-  await fs.writeFile(filePath, buffer);
-
-  return filePath;
+    return { imagePath, plotPath };
+  } catch (error) {
+    logger.error('Failed to generate visualizations', { error });
+    throw error;
+  }
 }

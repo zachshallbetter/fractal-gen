@@ -64,3 +64,5 @@ export function max(a, b) {
 export function numericalIntegration(f, a, b, n) {
   return math.integrate(f, a, b, n);
 }
+
+export { math };

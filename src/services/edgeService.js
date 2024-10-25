@@ -3,7 +3,7 @@
  * @description Provides edge-specific optimizations and configurations for running the Fractal Generator on edge devices.
  * This module is designed to work with Vercel's Edge Runtime and Node.js, addressing resource constraints and performance considerations.
  * It includes request throttling, memory optimization, graceful shutdown mechanisms, job management, and statistics reporting.
- * @since 1.0.13
+ * @since 1.0.14
  * 
  * - Optimized for edge devices with limited CPU, memory, and storage.
  * - Implements efficient concurrency handling and robust error management.
@@ -17,7 +17,7 @@
 
 import { processFractalRequest, getModels, getMethods } from './fractalService.js';
 import { cacheClient } from './cacheService.js';
-import { dbClient } from './dbService.js';
+import { dbClient } from './dbService.js'; // Updated import to reflect changes in dbService.js
 import logger from '../utils/logger.js';
 import { validateParameters } from '../utils/validation.js';
 

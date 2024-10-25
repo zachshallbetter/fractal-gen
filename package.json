@@ -1,13 +1,14 @@
 {
     "name": "fractal-generator",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "description": "A Node.js application for generating fractals using advanced mathematical models.",
     "main": "src/index.js",
     "type": "module",
     "scripts": {
         "start": "node src/index.js",
         "dev": "nodemon src/server.js",
-        "test": "mocha"
+        "test": "mocha",
+        "watch": "nodemon src/server.js --watch src"
     },
     "keywords": [
         "fractal",
@@ -31,6 +32,7 @@
         "http": "0.0.1-security",
         "mathjs": "^13.2.0",
         "pg": "^8.13.0",
+        "uuid": "^10.0.0",
         "winston": "^3.15.0",
         "ws": "^8.18.0",
         "yargs": "^17.7.2"

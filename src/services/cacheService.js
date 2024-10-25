@@ -15,7 +15,7 @@
  * @since 1.0.16
  */
 
-import { logger } from '../utils/logger.js';
+import logger from '../utils/logger.js';
 import { dbClient } from './dbService.js';
 
 const UPSTASH_URL = 'https://moving-wren-41860.upstash.io';

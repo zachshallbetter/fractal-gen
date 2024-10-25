@@ -32,7 +32,7 @@ import logger from './logger.js';
  * @returns {Promise<Object>} - The inferred parameters of the fractal.
  * @throws {Error} If the reverse engineering process fails.
  */
-async function reverseEngineer(data) {
+export async function reverseEngineer(data) {
   try {
     logger.info('Starting reverse engineering process', { dataPoints: data.length });
 

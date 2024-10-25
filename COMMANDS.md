@@ -225,3 +225,4 @@ Generates an interactive plot of the fractal data using the Canvas API, allowing
 - Some models and methods may require specific parameters; refer to the main documentation for detailed information.
 
 For more detailed information about each model and method, refer to the main documentation in the `README.md`.
+

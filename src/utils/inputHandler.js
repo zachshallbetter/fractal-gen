@@ -36,6 +36,10 @@
 
 const yargs = require('yargs');
 
+/**
+ * Parses and validates user inputs from command-line arguments.
+ * @returns {Object} The parsed and validated input parameters.
+ */
 function parseInputs() {
   const argv = yargs
     .usage('Usage: $0 [options]')

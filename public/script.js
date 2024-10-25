@@ -1,74 +1,121 @@
 /**
  * @module FractalGeneratorInterface
  * @description Handles user interactions and communicates with the server to generate fractals.
- * Provides an interactive interface for users to adjust parameters and visualize fractal data.
- * @since 1.0.7
+ * @since 1.0.15
  */
+
+// Declare the WebSocket variable globally
+let ws; // Added global declaration
 
 const canvas = document.getElementById('fractalCanvas');
 const ctx = canvas.getContext('2d');
-const ws = new WebSocket('ws://localhost:3000');
 
 const elements = {
-  alpha: document.getElementById('alpha'),
-  beta: document.getElementById('beta'),
   model: document.getElementById('model'),
   method: document.getElementById('method'),
+  alpha: document.getElementById('alpha'),
+  beta: document.getElementById('beta'),
+  maxTerms: document.getElementById('maxTerms'),
   generateFractal: document.getElementById('generateFractal'),
-  reverseEngineer: document.getElementById('reverseEngineer'),
-  results: document.getElementById('results')
+  results: document.getElementById('results'),
+  alphaValue: document.getElementById('alphaValue'),
+  betaValue: document.getElementById('betaValue'),
+  maxTermsValue: document.getElementById('maxTermsValue'),
+  timeSteps: document.getElementById('timeSteps'),
+  timeEnd: document.getElementById('timeEnd'),
 };
 
-elements.alpha.addEventListener('input', updateValue);
-elements.beta.addEventListener('input', updateValue);
-elements.model.addEventListener('change', populateMethods);
-elements.generateFractal.addEventListener('click', generateFractal);
+// Add reconnection logic
+let wsReconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
 
-/**
- * Updates the corresponding label when a slider value changes
- * @function
- * @param {Event} event - The input event
- */
-function updateValue(event) {
-  document.getElementById(`${event.target.id}Value`).textContent = event.target.value;
+function connectWebSocket() {
+  ws = new WebSocket(`ws://${window.location.host}`);
+  
+  ws.onopen = () => {
+    console.log('WebSocket connection established');
+    wsReconnectAttempts = 0;
+    ws.send(JSON.stringify({ action: 'getModelsAndMethods' }));
+  };
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    switch (data.action) {
+      case 'modelsAndMethods':
+        populateModelsAndMethods(data.models, data.methods);
+        break;
+      case 'methods':
+        populateMethods(data.methods);
+        break;
+      case 'fractalData':
+        drawFractal(data.data);
+        elements.generateFractal.disabled = false;
+        elements.generateFractal.textContent = 'Generate Fractal';
+        updateProgress(100);
+        break;
+      case 'progress':
+        updateProgress(data.progress);
+        break;
+      default:
+        console.warn('Unknown action received:', data.action);
+    }
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket connection closed');
+    if (wsReconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      wsReconnectAttempts++;
+      setTimeout(connectWebSocket, 1000 * wsReconnectAttempts);
+    } else {
+      displayError('Connection lost. Please refresh the page.');
+    }
+  };
 }
 
-/**
- * Sends fractal generation parameters to the WebSocket server
- * @function
- */
+// Initialize connection
+connectWebSocket();
+
+// Event listeners
+elements.model.addEventListener('change', updateMethods);
+elements.generateFractal.addEventListener('click', generateFractal);
+elements.alpha.addEventListener('input', updateValueLabel);
+elements.beta.addEventListener('input', updateValueLabel);
+elements.maxTerms.addEventListener('input', updateValueLabel);
+
+function updateMethods() {
+  const selectedModel = elements.model.value;
+  ws.send(JSON.stringify({ action: 'getMethods', model: selectedModel }));
+}
+
+function updateValueLabel(event) {
+  elements[`${event.target.id}Value`].textContent = event.target.value;
+}
+
 function generateFractal() {
+  const generateButton = elements.generateFractal;
+  generateButton.disabled = true;
+  generateButton.textContent = 'Generating...';
+
   const params = {
-    model: elements.model.value,
-    method: elements.method.value,
-    alpha: parseFloat(elements.alpha.value),
-    beta: parseFloat(elements.beta.value),
-    timeSteps: 1000,
-    timeEnd: 10,
-    reverseEngineer: elements.reverseEngineer.checked,
+    action: 'generateFractal',
+    params: {
+      model: elements.model.value,
+      method: elements.method.value,
+      alpha: parseFloat(elements.alpha.value),
+      beta: parseFloat(elements.beta.value),
+      maxTerms: parseInt(elements.maxTerms.value, 10),
+      timeSteps: parseInt(elements.timeSteps.value, 10),
+      timeEnd: parseFloat(elements.timeEnd.value),
+    },
   };
 
   ws.send(JSON.stringify(params));
 }
 
 /**
- * Handles incoming WebSocket messages
- * @param {MessageEvent} event - The WebSocket message event
- */
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  if (data.methods) {
-    elements.method.innerHTML = data.methods.map(method => `<option value="${method}">${method}</option>`).join('');
-  } else if (data.success) {
-    drawFractal(data.data);
-  } else {
-    displayError(data.error);
-  }
-};
-
-/**
- * Renders the fractal data on the canvas
- * @param {Array<{x: number, y: number, iteration: number}>} data - The fractal data to render
+ * Draws the fractal on the canvas
+ * @param {Array} data - The fractal data points
  */
 function drawFractal(data) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -81,8 +128,12 @@ function drawFractal(data) {
     } else {
       ctx.lineTo(x, y);
     }
+    const color = getColor(point.iteration);
+    ctx.strokeStyle = `rgb(${color.r}, ${color.g}, ${color.b})`;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
   });
-  ctx.stroke();
 }
 
 /**
@@ -138,23 +189,48 @@ function hslToRgb(h, s, l) {
  * @param {string} message - The error message to display
  */
 function displayError(message) {
-  elements.results.innerHTML = `<p class="error">Error: ${message}</p>`;
+  elements.results.innerHTML = `<p class="error">${message}</p>`;
+}
+
+function updateProgress(progress) {
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+  
+  if (progress === 0) {
+    progressContainer.style.display = 'block';
+  } else if (progress === 100) {
+    progressContainer.style.display = 'none';
+  }
+  
+  progressBar.style.width = `${progress}%`;
+  progressText.textContent = `Generating fractal... ${progress}%`;
 }
 
 /**
- * Initializes the WebSocket connection and sets up error handling
+ * Populates the model and method dropdowns with available options
+ * @param {Array} models - Array of available models
+ * @param {Object} methods - Object mapping models to their methods
  */
-function initializeWebSocket() {
-  ws.onerror = (error) => {
-    console.error('WebSocket Error:', error);
-    displayError('Failed to connect to the server. Please try again later.');
-  };
-
-  ws.onopen = () => {
-    console.log('WebSocket connection established');
-    populateMethods(); // Populate methods for the initial model
-  };
+function populateModelsAndMethods(models, methods) {
+  if (models) {
+    elements.model.innerHTML = models.map(model => `<option value="${model}">${model}</option>`).join('');
+    elements.model.dispatchEvent(new Event('change'));
+  }
+  if (methods) {
+    populateMethods(methods[elements.model.value]);
+  }
 }
 
-// Initialize WebSocket and generate initial fractal
-initializeWebSocket();
+/**
+ * Populates the methods dropdown based on the selected model
+ * @param {Array} methods - Array of available methods for the selected model
+ * @since 1.0.15
+ */
+function populateMethods(methods) {
+  if (methods) {
+    elements.method.innerHTML = methods.map(method => `<option value="${method}">${method}</option>`).join('');
+  } else {
+    elements.method.innerHTML = '';
+  }
+}

@@ -6,7 +6,7 @@
  * The STADM method combines the Adomian decomposition method with a shift in the initial condition,
  * allowing for more efficient solutions to certain types of fractional differential equations.
  * 
- * @since 1.1.1
+ * @since 1.1.2
  * 
  * @example
  * // Example usage of stadmSolver:
@@ -109,7 +109,7 @@ export async function computeAdomianTerm(alpha, equation, prevSum, t, n) {
  * @param {number} params.terms - The number of terms to use in the Adomian decomposition.
  * @returns {Promise<Object>} The solution object containing time points and corresponding values.
  * @throws {Error} If input validation fails or computation encounters an error.
- * @since 1.1.0
+ * @since 1.1.2
  */
 export async function stadmSolver(params) {
   try {
@@ -119,10 +119,21 @@ export async function stadmSolver(params) {
     const h = (timeEnd - timeStart) / timeSteps;
     const timePoints = Array.from({ length: timeSteps + 1 }, (_, i) => timeStart + i * h);
     
-    const solution = await computeStadmSolution(alpha, initialCondition, timePoints, equation, terms);
+    const fractalRequest = {
+      alpha,
+      initialCondition,
+      timeStart,
+      timeEnd,
+      timeSteps,
+      equation,
+      terms,
+      method: 'stadm'
+    };
+    
+    const result = await processFractalRequest(fractalRequest);
     
     logger.info(`STADM solution computed successfully with ${timeSteps} time steps and ${terms} terms`);
-    return { timePoints, solution };
+    return result;
   } catch (error) {
     logger.error('Error in STADM solver:', error);
     throw new Error(`STADM solver failed: ${error.message}`);
@@ -159,7 +170,14 @@ function validateStadmParams(params) {
  * @returns {Promise<number>} The computed Adomian polynomial value.
  */
 async function computeAdomianPolynomial(equation, solution, k, i, alpha) {
-  // Implementation of Adomian polynomial computation goes here
+  // Implement the computation of the k-th Adomian polynomial at time point i
   // This is a placeholder and should be replaced with the actual implementation
-  return 0;
+  return 0; // Replace with actual computation
 }
+
+class ParallelComputation {
+    async executeTasks(tasks) {
+        return Promise.all(tasks.map((task) => task()));
+    }
+}
+

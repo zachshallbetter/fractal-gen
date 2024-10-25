@@ -5,7 +5,7 @@
  * Ensures models are executed in a non-blocking manner suitable for edge environments.
  * 
  * This module achieves its intent by:
- * - Supporting multiple models (fractionalSineGordon and others)
+ * - Supporting multiple models (fractionalSineGordon, advectionDiffusionReaction, mandelbrot, twoScale, interpersonalRelationships)
  * - Providing a unified interface for generating fractal data
  * - Validating model and method selection
  * - Delegating execution to specific solvers
@@ -44,20 +44,17 @@
  * 
  * @since 1.0.11
  */
-
 import { selectSolver } from '../solvers/solverSelector.js';
-import { mandelbrot } from './mandelbrotModel.js';
+import { modelMethods as advectionDiffusionReactionModelMethods } from './advectionDiffusionReactionModel.js';
+import { modelMethods as fractionalSineGordonModelMethods } from './fractionalSineGordonModel.js';
+import { modelMethods as twoScaleModelMethods } from './twoScaleModel.js';
+import { modelMethods as interpersonalModelMethods } from './interpersonalRelationshipsModel.js';
 
-/**
- * Map of models to their available solvers.
- * @type {Object.<string, Object.<string, Function>>}
- * @since 1.0.12
- */
-const modelSolvers = {
-  mandelbrot: {
-    default: mandelbrot,
-  },
-  // Add other models and solvers as needed
+const modelMap = {
+  'twoScale': twoScaleModelMethods,
+  'interpersonal': interpersonalModelMethods,
+  'advectionDiffusion': advectionDiffusionReactionModelMethods,
+  'fractionalSineGordon': fractionalSineGordonModelMethods,
 };
 
 /**
@@ -74,11 +71,7 @@ const modelSolvers = {
 export async function generateFractalData(params) {
   const { model, method = 'default' } = params;
 
-  if (!modelSolvers[model]) {
-    throw new Error(`Model "${model}" is not supported.`);
-  }
-
-  const solver = modelSolvers[model][method];
+  const solver = await selectSolver(model, method);
 
   if (!solver) {
     throw new Error(`Method "${method}" is not available for model "${model}".`);
@@ -88,22 +81,26 @@ export async function generateFractalData(params) {
 }
 
 /**
- * Returns an array of available model names.
- * @returns {string[]} Array of model names.
+ * Retrieves available fractal models.
+ * @function
+ * @returns {Array<string>} An array of available model names.
  */
 export function getAvailableModels() {
-  return Object.keys(modelSolvers);
+  return Object.keys(modelMap);
 }
 
 /**
- * Returns an array of available method names for a given model.
+ * Retrieves available methods for a given model.
+ * @function
  * @param {string} model - The name of the model.
- * @returns {string[]} Array of method names.
- * @throws {Error} If the model is not recognized.
+ * @returns {Array<string>} An array of available method names.
+ * @throws {Error} If the model is not found or its methods are not a function.
  */
 export function getAvailableMethods(model) {
-  if (!modelSolvers[model]) {
-    throw new Error(`Model "${model}" is not recognized.`);
+  const methodsModule = modelMap[model];
+  if (!methodsModule || !methodsModule.getAvailableMethods) {
+    throw new Error(`No methods available for model "${model}".`);
   }
-  return Object.keys(modelSolvers[model]);
+  return methodsModule.getAvailableMethods();
 }
+

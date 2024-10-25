@@ -158,7 +158,6 @@ export function getAvailableTransforms() {
 export function getTransform(name) {
   return transforms[name];
 }
-
 /**
  * Generate Adomian polynomials
  * @param {Function} f - The function to generate polynomials for

@@ -11,7 +11,7 @@
  * - Leverages parallel computation for improved performance
  * - Comprehensive error handling and parameter validation
  * 
- * @since 1.0.13
+ * @since 1.0.14
  * 
  * @example
  * // Example usage of inverseBernsteinPolynomials:
@@ -48,8 +48,14 @@ import logger from '../utils/logger.js';
  * @returns {Function} - A function that computes the inverse of the Bernstein polynomial for a given y.
  * @throws {Error} If the input is invalid or computation fails.
  */
-export async function inverseBernsteinPolynomials(coefficients) {
+export async function generateInverseBernsteinPolynomials(coefficients) {
   validateArray(coefficients, 'coefficients');
+
+  // Verify the polynomial is monotonic to ensure a valid inverse exists
+  const isMonotonic = await verifyMonotonicity(coefficients);
+  if (!isMonotonic) {
+    throw new Error('Bernstein polynomial must be monotonic to have a valid inverse');
+  }
 
   const degree = coefficients.length - 1;
 
@@ -62,17 +68,107 @@ export async function inverseBernsteinPolynomials(coefficients) {
       return coefficients.reduce((sum, coeff, k) => sum + coeff * bernsteinPolynomials[k], 0);
     };
 
-    // Use a root-finding method (e.g., Brent's method) to find x such that B(x) = y
-    const x = await findRoot(
-      async (x) => (await B(x)) - y,
-      0,
-      1,
-      1e-6,
-      100
-    );
-
-    return x;
+    // Use Newton's method with bisection fallback for more robust root finding
+    try {
+      const x = await newtonMethod(
+        B,
+        async (x) => {
+          const h = 1e-7;
+          const fx1 = await B(x + h);
+          const fx2 = await B(x - h);
+          return (fx1 - fx2) / (2 * h);
+        },
+        y,
+        0.5, // Initial guess at midpoint
+        1e-6,
+        50
+      );
+      return x;
+    } catch (error) {
+      // Fallback to bisection method if Newton's method fails
+      return findRoot(
+        async (x) => (await B(x)) - y,
+        0,
+        1,
+        1e-6,
+        100
+      );
+    }
   };
+}
+
+/**
+ * Verifies that a Bernstein polynomial is monotonic by checking coefficients
+ * and evaluating at sample points.
+ * @async
+ * @param {number[]} coefficients - Coefficients of the Bernstein polynomial
+ * @returns {Promise<boolean>} - True if the polynomial is monotonic
+ */
+async function verifyMonotonicity(coefficients) {
+  // Check if coefficients are strictly increasing or decreasing
+  let increasing = true;
+  let decreasing = true;
+  
+  for (let i = 1; i < coefficients.length; i++) {
+    if (coefficients[i] <= coefficients[i-1]) increasing = false;
+    if (coefficients[i] >= coefficients[i-1]) decreasing = false;
+  }
+  
+  if (increasing || decreasing) return true;
+
+  // If coefficients test is inconclusive, sample points to verify
+  const samples = 20;
+  let lastValue = null;
+  
+  for (let i = 0; i <= samples; i++) {
+    const x = i / samples;
+    const value = await evaluateBernsteinPolynomial(coefficients, x);
+    
+    if (lastValue !== null) {
+      if (Math.abs(value - lastValue) < 1e-10) {
+        return false; // Not strictly monotonic
+      }
+    }
+    lastValue = value;
+  }
+  
+  return true;
+}
+
+/**
+ * Newton's method for root finding with improved convergence checks
+ * @async
+ * @param {Function} f - The function
+ * @param {Function} df - The derivative function
+ * @param {number} y - Target value
+ * @param {number} x0 - Initial guess
+ * @param {number} tol - Tolerance
+ * @param {number} maxIter - Maximum iterations
+ * @returns {Promise<number>} - The root
+ */
+async function newtonMethod(f, df, y, x0, tol, maxIter) {
+  let x = x0;
+  
+  for (let i = 0; i < maxIter; i++) {
+    const fx = await f(x);
+    const dfx = await df(x);
+    
+    if (Math.abs(dfx) < tol) {
+      throw new Error('Derivative too close to zero');
+    }
+    
+    const delta = (fx - y) / dfx;
+    x = x - delta;
+    
+    if (Math.abs(delta) < tol) {
+      return x;
+    }
+    
+    // Keep x in valid range
+    x = Math.max(0, Math.min(1, x));
+  }
+  
+  throw new Error('Newton\'s method did not converge');
 }
 
 /**

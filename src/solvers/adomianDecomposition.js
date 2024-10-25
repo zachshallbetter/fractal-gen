@@ -3,6 +3,17 @@
  * @description Generates Adomian polynomials for nonlinear terms in differential equations.
  * Optimized for non-blocking computation.
  * 
+ * This module is designed to efficiently generate Adomian polynomials for nonlinear terms in differential equations.
+ * It leverages non-blocking computation to ensure responsiveness and suitability for both small-scale and large-scale simulations.
+ * 
+ * @example
+ * const polynomial = generateAdomianPolynomials(uSeries, 3);
+ * console.log(polynomial(0.5));
+ * 
+ * @input uSeries - Series of solution approximations up to (n-1) terms. (Array<Function>)
+ * @input n - The index of the polynomial to generate. (Number)
+ * 
+ * @since 1.0.2
  */
 
 /**

@@ -103,5 +103,3 @@ function validateGrunwaldLetnikovParams(params) {
   validatePositiveInteger(params.timeSteps, 'timeSteps');
   validateFunction(params.equation, 'equation');
 }
-
-export default solveGrunwaldLetnikov;

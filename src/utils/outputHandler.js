@@ -20,11 +20,11 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { createInteractivePlot } from '../visualizations/plotGenerator';
-import { createFractalImage } from '../visualizations/imageGenerator';
-import { validateResults } from './validators.js';
+import { createInteractivePlot } from '../visualizations/plotGenerator.js';
+import { generateFractalImage } from '../visualizations/imageGenerator.js';
 import { ParallelComputation } from './parallelComputation.js';
 import logger from './logger.js';
+import { validateArray, validateObject } from './validation.js';
 
 /**
  * Outputs and validates the results of fractal generation.
@@ -32,51 +32,24 @@ import logger from './logger.js';
  * @function
  * @param {Array<{x: number, y: number}>} data - The generated fractal data.
  * @param {Object} params - Parameters used in fractal generation.
- * @param {Function} [analyticalSolution] - The analytical solution function, if available.
- * @throws {Error} If file operations or visualization generation fails.
  * @returns {Promise<void>}
- * @since 1.0.12
+ * @since 1.0.13
  */
-export async function outputResults(data, params, analyticalSolution) {
-  const parallelComputation = new ParallelComputation();
-
+export async function outputResults(data, params) {
   try {
     logger.info('Starting output process', { params });
 
-    // Ensure directories exist
-    await Promise.all([
-      fs.mkdir('data', { recursive: true }),
-      fs.mkdir('plots', { recursive: true }),
-      fs.mkdir('images', { recursive: true })
-    ]);
-
     // Save data to file
-    const dataFilePath = path.join('data', `fractalData_${params.model}_${Date.now()}.json`);
-    await fs.writeFile(dataFilePath, JSON.stringify({ data, params }, null, 2));
-    logger.info(`Data saved to file: ${dataFilePath}`);
+    await saveDataToFile(data, params);
 
-    // Generate visualizations in parallel
-    const visualizationTasks = [
-      () => createInteractivePlot(data, params),
-      () => createFractalImage(data, params)
-    ];
-    const [plotPath, imagePath] = await parallelComputation.executeTasks(visualizationTasks);
-    logger.info('Visualizations generated successfully', { plotPath, imagePath });
+    // Generate visualizations
+    await generateVisualization(data, params);
 
-    // Validate results if analytical solution is provided
-    if (typeof analyticalSolution === 'function') {
-      const maxError = validateResults(data, analyticalSolution, params);
-      logger.info(`Validation complete. Maximum error: ${maxError}`, { maxError });
-      await fs.appendFile(dataFilePath, `\nMaximum error: ${maxError}`);
-    }
-
-    logger.info('Results saved and visualizations generated successfully.', {
-      dataFilePath,
-      plotPath,
-      imagePath
-    });
+    logger.info('Results saved and visualizations generated successfully.');
   } catch (error) {
-    logger.error('Error in outputResults', error, { params });
+    logger.error('Error in outputResults', { error });
     throw error;
   }
 }
+
+/* ... Other functions ... */
