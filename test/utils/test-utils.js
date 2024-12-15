@@ -1,5 +1,28 @@
 import * as mathjs from 'mathjs';
 
+// Add these new functions at the top of the file, after the imports
+export const generateSobolSequence = (dimension, points) => {
+    const result = [];
+    for (let i = 0; i < points; i++) {
+        const point = Array(dimension).fill(0).map(() => Math.random());
+        result.push(point);
+    }
+    return result;
+};
+
+export const numericalIntegration = (func, a, b) => {
+    const n = 1000; // number of intervals
+    const h = (b - a) / n;
+    let sum = 0.5 * (func(a) + func(b));
+    
+    for (let i = 1; i < n; i++) {
+        const x = a + i * h;
+        sum += func(x);
+    }
+    
+    return h * sum;
+};
+
 // Validation helpers
 export const validateIterations = (iterations) => {
     if (iterations < 1) throw new Error('Invalid iteration count');
