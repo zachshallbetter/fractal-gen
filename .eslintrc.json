@@ -1,0 +1,42 @@
+{
+    "env": {
+        "node": true,
+        "es2022": true,
+        "mocha": true,
+        "browser": true
+    },
+    "extends": [
+        "eslint:recommended",
+        "plugin:mocha/recommended"
+    ],
+    "parserOptions": {
+        "ecmaVersion": 2022,
+        "sourceType": "module"
+    },
+    "plugins": [
+        "mocha"
+    ],
+    "rules": {
+        "indent": ["error", 4],
+        "linebreak-style": ["error", "unix"],
+        "quotes": ["error", "single"],
+        "semi": ["error", "always"],
+        "no-unused-vars": ["warn"],
+        "mocha/no-skipped-tests": "error",
+        "mocha/no-exclusive-tests": "error",
+        "mocha/no-pending-tests": "error",
+        "mocha/no-mocha-arrows": "off",
+        "mocha/max-top-level-suites": ["error", 1],
+        "complexity": ["warn", 10],
+        "max-len": ["warn", { "code": 100 }],
+        "no-console": ["warn", { "allow": ["warn", "error"] }]
+    },
+    "overrides": [
+        {
+            "files": ["test/**/*.js"],
+            "rules": {
+                "no-unused-expressions": "off"
+            }
+        }
+    ]
+} 
