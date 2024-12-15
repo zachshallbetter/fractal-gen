@@ -69,40 +69,26 @@ Connect to the WebSocket server at `ws://${window.location.host}`. The WebSocket
 
 ## Testing API
 
-The following endpoints are available for testing and validation purposes:
+## Overview
 
-### Health Check
+The Testing API provides endpoints for testing, validation, and performance monitoring of the fractal generation system.
 
-**Endpoint:** `GET /api/health`
+## Test Mode Endpoints
 
-**Description:** Checks the health status of the service.
+### Enable Test Mode
 
-**Response:**
-```json
-{
-    "status": "healthy",
-    "version": "1.0.10",
-    "uptime": "2d 3h 45m",
-    "memory": {
-        "used": "156MB",
-        "total": "512MB"
-    }
-}
-```
+**Endpoint:** `POST /api/test/enable`
 
-### Test Mode
-
-**Endpoint:** `POST /api/test-mode`
-
-**Description:** Enables test mode for the service, which uses mock data and faster computation methods.
+**Description:** Enables test mode for development and testing purposes.
 
 **Request:**
 ```json
 {
-    "enabled": true,
-    "mockData": {
-        "computationTime": 100,
-        "errorRate": 0.01
+    "mode": "test",
+    "options": {
+        "mockData": true,
+        "fastComputation": true,
+        "logLevel": "debug"
     }
 }
 ```
@@ -114,27 +100,43 @@ The following endpoints are available for testing and validation purposes:
     "mode": "test",
     "config": {
         "mockData": true,
-        "computationTime": 100,
-        "errorRate": 0.01
+        "fastComputation": true,
+        "logLevel": "debug"
     }
 }
 ```
 
-### Validation Test
+### Disable Test Mode
 
-**Endpoint:** `POST /api/validate`
+**Endpoint:** `POST /api/test/disable`
 
-**Description:** Validates input parameters without performing actual computations.
+**Description:** Disables test mode and returns to production settings.
+
+**Response:**
+```json
+{
+    "status": "success",
+    "mode": "production"
+}
+```
+
+## Validation Endpoints
+
+### Validate Parameters
+
+**Endpoint:** `POST /api/test/validate`
+
+**Description:** Validates fractal generation parameters without computation.
 
 **Request:**
 ```json
 {
-    "model": "twoScale",
-    "method": "LADM",
-    "parameters": {
-        "iterations": 100,
-        "dimension": 2.5,
-        "alpha": 0.9
+    "type": "mandelbrot",
+    "params": {
+        "width": 800,
+        "height": 600,
+        "maxIterations": 1000,
+        "colorScheme": "spectrum"
     }
 }
 ```
@@ -147,28 +149,29 @@ The following endpoints are available for testing and validation purposes:
         "High iteration count may impact performance"
     ],
     "suggestions": {
-        "recommended_iterations": 50
+        "recommendedIterations": 500
     }
 }
 ```
 
-### Performance Test
+## Performance Testing
 
-**Endpoint:** `POST /api/performance-test`
+### Run Performance Test
 
-**Description:** Runs a performance test for specific fractal generation parameters.
+**Endpoint:** `POST /api/test/performance`
+
+**Description:** Executes performance tests for specific configurations.
 
 **Request:**
 ```json
 {
-    "model": "twoScale",
-    "method": "LADM",
-    "parameters": {
-        "iterations": 100,
-        "dimension": 2.5
-    },
-    "testConfig": {
-        "runs": 5,
+    "type": "benchmark",
+    "config": {
+        "iterations": 5,
+        "resolution": {
+            "width": 1920,
+            "height": 1080
+        },
         "parallel": true
     }
 }
@@ -178,30 +181,104 @@ The following endpoints are available for testing and validation purposes:
 ```json
 {
     "results": {
-        "averageTime": 234.5,
-        "minTime": 220.1,
-        "maxTime": 245.3,
+        "averageTime": 245.6,
+        "minTime": 220.3,
+        "maxTime": 280.1,
         "memoryUsage": {
-            "before": "156MB",
-            "after": "178MB",
-            "peak": "189MB"
-        }
+            "initial": "156MB",
+            "peak": "312MB",
+            "final": "178MB"
+        },
+        "cpuUtilization": 85.4
     },
     "recommendations": {
-        "optimal_batch_size": 50,
-        "suggested_worker_count": 4
+        "optimalThreads": 4,
+        "suggestedChunkSize": 200
     }
 }
 ```
 
-### Mock Data Generation
+### Memory Profile
 
-**Endpoint:** `GET /api/mock-data/:type`
+**Endpoint:** `GET /api/test/memory-profile`
 
-**Description:** Generates mock data for testing purposes.
+**Description:** Retrieves memory usage statistics.
+
+**Response:**
+```json
+{
+    "heapUsed": "156MB",
+    "heapTotal": "512MB",
+    "external": "12MB",
+    "arrayBuffers": "45MB",
+    "gc": {
+        "collections": 12,
+        "totalTime": "156ms"
+    }
+}
+```
+
+## Load Testing
+
+### Generate Load
+
+**Endpoint:** `POST /api/test/generate-load`
+
+**Description:** Generates synthetic load for stress testing.
+
+**Request:**
+```json
+{
+    "users": 100,
+    "duration": 60,
+    "requestType": "fractal",
+    "distribution": "gaussian"
+}
+```
+
+**Response:**
+```json
+{
+    "status": "running",
+    "metrics": {
+        "activeUsers": 100,
+        "requestsPerSecond": 250,
+        "errorRate": 0.01,
+        "averageLatency": 120
+    }
+}
+```
+
+### Monitor Load Test
+
+**Endpoint:** `GET /api/test/load-status`
+
+**Description:** Retrieves current load test status and metrics.
+
+**Response:**
+```json
+{
+    "status": "running",
+    "progress": 45,
+    "metrics": {
+        "throughput": 245.6,
+        "errorCount": 12,
+        "p95Latency": 180,
+        "activeConnections": 98
+    }
+}
+```
+
+## Mock Data
+
+### Generate Mock Data
+
+**Endpoint:** `GET /api/test/mock/:type`
+
+**Description:** Generates mock data for testing.
 
 **Parameters:**
-- `type`: Type of mock data to generate (e.g., "fractal", "timeseries", "parameters")
+- `type`: Type of mock data (fractal, timeseries, parameters)
 
 **Response:**
 ```json
@@ -214,6 +291,69 @@ The following endpoints are available for testing and validation purposes:
             "seed": 12345,
             "complexity": "medium"
         }
+    }
+}
+```
+
+## WebSocket Test Events
+
+### Test Connection
+
+**Event:** `test:connect`
+
+**Description:** Tests WebSocket connection stability.
+
+**Message:**
+```json
+{
+    "type": "test:connect",
+    "data": {
+        "clientId": "test-123",
+        "timestamp": 1642234567890
+    }
+}
+```
+
+### Echo Test
+
+**Event:** `test:echo`
+
+**Description:** Echoes received data for latency testing.
+
+**Message:**
+```json
+{
+    "type": "test:echo",
+    "data": "test-payload",
+    "timestamp": 1642234567890
+}
+```
+
+## Error Simulation
+
+### Simulate Error
+
+**Endpoint:** `POST /api/test/simulate-error`
+
+**Description:** Simulates various error conditions for testing.
+
+**Request:**
+```json
+{
+    "type": "memory-overflow",
+    "delay": 100,
+    "recovery": true
+}
+```
+
+**Response:**
+```json
+{
+    "status": "error",
+    "error": {
+        "type": "memory-overflow",
+        "message": "Simulated memory overflow error",
+        "handled": true
     }
 }
 ```

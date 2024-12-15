@@ -113,22 +113,175 @@ Ensure you have Node.js version 14.0.0 or higher installed. This application use
 
 ## Testing
 
-The project includes a comprehensive testing framework using Mocha and Chai. The test suite covers:
+The project includes a comprehensive testing infrastructure that covers all aspects of the fractal generation pipeline.
 
 ### Test Categories
 
-- **Fractal Generation Tests**:
-  - Parameter validation
-  - Fractal computation methods (LADM, STADM, etc.)
-  - Performance benchmarks
+#### Unit Tests
+- **Fractal Generation Pipeline**
+  - Input validation
+  - Computation stages
+  - Color mapping
+  - Optimization techniques
   - Error handling
+  - Pipeline integration
 
-- **Utility Tests**:
-  - Mathematical utilities
-  - Data processing
-  - Parallel computation
-  - Visualization helpers
-  - Input/Output handling
-  - Logging system
+- **Mathematical Components**
+  - Mandelbrot set computation
+  - Julia set variations
+  - Complex number operations
+  - Numerical precision handling
+
+- **Utilities**
+  - Color scheme management
+  - Memory optimization
+  - Worker pool handling
+  - Progress tracking
+
+#### Integration Tests
+- **API Integration**
+  - WebSocket communication
+  - REST endpoints
+  - Data validation
+  - Error responses
+
+- **Visualization**
+  - Canvas rendering
+  - Color mapping
+  - Animation performance
+  - Memory management
+
+#### End-to-End Tests
+- **Web Interface**
+  - User interactions
+  - Real-time updates
+  - Export functionality
+  - Error handling
+  - Progressive rendering
+
+#### Performance Tests
+- **Computation Benchmarks**
+  - Large-scale computations
+  - Memory usage optimization
+  - CPU utilization
+  - GPU acceleration
+
+#### Stress Tests
+- **Load Testing**
+  - Concurrent connections
+  - Burst requests
+  - Resource limits
+  - Error resilience
 
 ### Running Tests
+
+```bash
+# Install dependencies
+npm install
+
+# Run all tests
+npm test
+
+# Run specific test suites
+npm run test:unit         # Unit tests
+npm run test:integration  # Integration tests
+npm run test:e2e         # End-to-end tests
+npm run test:performance # Performance tests
+npm run test:stress      # Stress tests
+
+# Development
+npm run test:watch      # Watch mode
+npm run lint           # Check code style
+npm run lint:fix       # Fix code style
+```
+
+### Test Configuration
+
+The testing framework uses:
+- **Mocha**: Test runner
+- **Chai**: Assertion library
+- **Sinon**: Mocking and stubbing
+- **Playwright**: Browser automation
+- **c8**: Code coverage
+
+Configuration files:
+- `.eslintrc.json`: Code style rules
+- `test/mocha.opts`: Mocha configuration
+- `test/utils/test-utils.js`: Common test utilities
+
+### Writing Tests
+
+Follow these guidelines when writing tests:
+
+1. **Naming Conventions**
+   - Use descriptive test names
+   - Follow the pattern: "should [expected behavior]"
+   - Group related tests in describes
+
+2. **Test Structure**
+   ```javascript
+   describe('Component', () => {
+       it('should behave as expected', () => {
+           // Arrange
+           const input = setupTest();
+           
+           // Act
+           const result = performAction(input);
+           
+           // Assert
+           expect(result).to.equal(expectedOutput);
+       });
+   });
+   ```
+
+3. **Best Practices**
+   - Keep tests focused and isolated
+   - Use before/after hooks for setup/cleanup
+   - Mock external dependencies
+   - Test edge cases and error conditions
+
+4. **Performance Considerations**
+   - Use appropriate timeouts for async tests
+   - Clean up resources after tests
+   - Avoid unnecessary computation in tests
+
+### Continuous Integration
+
+The project uses GitHub Actions for CI/CD:
+
+```yaml
+name: Test Suite
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+      - run: npm install
+      - run: npm run lint
+      - run: npm run test:unit
+      - run: npm run test:integration
+      - run: npm run test:e2e
+      - run: npm run test:performance
+```
+
+### Code Coverage
+
+Coverage reports are generated using c8:
+
+```bash
+npm run test:coverage
+```
+
+The report includes:
+- Statement coverage
+- Branch coverage
+- Function coverage
+- Line coverage
+
+Target coverage thresholds:
+- Statements: 90%
+- Branches: 85%
+- Functions: 90%
+- Lines: 90%
