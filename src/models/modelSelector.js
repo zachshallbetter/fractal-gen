@@ -49,12 +49,16 @@ import { modelMethods as advectionDiffusionReactionModelMethods } from './advect
 import { modelMethods as fractionalSineGordonModelMethods } from './fractionalSineGordonModel.js';
 import { modelMethods as twoScaleModelMethods } from './twoScaleModel.js';
 import { modelMethods as interpersonalModelMethods } from './interpersonalRelationshipsModel.js';
+import { modelMethods as fractionalHeatEquationModelMethods } from './fractionalHeatEquationModel.js';
+import { modelMethods as fractionalSchrodingerModelMethods } from './fractionalSchrodingerModel.js';
 
 const modelMap = {
   'twoScale': twoScaleModelMethods,
   'interpersonal': interpersonalModelMethods,
   'advectionDiffusion': advectionDiffusionReactionModelMethods,
   'fractionalSineGordon': fractionalSineGordonModelMethods,
+  'fractionalHeat': fractionalHeatEquationModelMethods,
+  'fractionalSchrodinger': fractionalSchrodingerModelMethods,
 };
 
 /**

@@ -11,11 +11,16 @@
  * 
  * @example
  * // Example usage:
- * const { grunwaldLetnikovSolver } = require('./fractionalSolver');
- * const f = (t, y) => -y; // Simple decay equation
- * const solution = grunwaldLetnikovSolver(f, 1, 0, 10, 1000, 0.5);
+ * const solution = await grunwaldLetnikovSolver({
+ *   alpha: 0.5,
+ *   initialCondition: t => 1,
+ *   timeStart: 0,
+ *   timeEnd: 10,
+ *   timeSteps: 1000,
+ *   equation: (t, y) => -y
+ * });
  * 
- * @since 1.0.8
+ * @since 1.0.9
  */
 
 import { combination } from '../utils/mathUtils.js';
@@ -26,7 +31,7 @@ import logger from '../utils/logger.js';
  * @async
  * @function
  * @param {Object} params - The parameters for the Grünwald-Letnikov solver.
- * @param {number} params.alpha - The fractional order of the derivative.
+ * @param {number} params.alpha - The fractional order of the derivative (0 < alpha <= 1).
  * @param {Function} params.initialCondition - The initial condition function.
  * @param {number} params.timeStart - The start time of the solution interval.
  * @param {number} params.timeEnd - The end time of the solution interval.
@@ -38,17 +43,44 @@ import logger from '../utils/logger.js';
 export async function grunwaldLetnikovSolver(params) {
   try {
     const { alpha, initialCondition, timeStart, timeEnd, timeSteps, equation } = params;
+
+    // Validate input parameters
+    if (alpha <= 0 || alpha > 1) {
+      throw new Error('Alpha must be in range (0,1]');
+    }
+    if (timeEnd <= timeStart) {
+      throw new Error('End time must be greater than start time');
+    }
+    if (timeSteps < 1) {
+      throw new Error('Number of time steps must be positive');
+    }
+
     const h = (timeEnd - timeStart) / timeSteps;
     const timePoints = Array.from({ length: timeSteps + 1 }, (_, i) => timeStart + i * h);
     const solution = [initialCondition(timeStart)];
 
+    // Pre-compute Grünwald-Letnikov coefficients
+    const glCoefficients = new Array(timeSteps + 1);
+    glCoefficients[0] = 1;
+    for (let j = 1; j <= timeSteps; j++) {
+      glCoefficients[j] = glCoefficients[j-1] * (1 - (alpha + 1) / j);
+    }
+
+    // Main solution loop using corrected Grünwald-Letnikov formula
     for (let n = 1; n <= timeSteps; n++) {
       let sum = 0;
       for (let j = 1; j <= n; j++) {
-        const coeff = Math.pow(-1, j) * combination(alpha, j);
-        sum += coeff * solution[n - j];
+        sum += glCoefficients[j] * solution[n - j];
       }
-      const y_n = solution[0] + Math.pow(h, alpha) * (equation(timePoints[n], solution[n - 1]) - sum / Math.pow(h, alpha));
+      
+      // Apply corrected Grünwald-Letnikov formula
+      const t_n = timePoints[n];
+      const y_prev = solution[n - 1];
+      const f_n = equation(t_n, y_prev);
+      
+      const y_n = y_prev + (Math.pow(h, alpha) / gamma(alpha)) * 
+                  (f_n - sum / Math.pow(h, alpha));
+      
       solution.push(y_n);
     }
 
@@ -58,4 +90,36 @@ export async function grunwaldLetnikovSolver(params) {
     logger.error('Error in Grünwald-Letnikov solver:', error);
     throw new Error(`Grünwald-Letnikov solver failed: ${error.message}`);
   }
+}
+
+/**
+ * Computes the Gamma function using Lanczos approximation.
+ * @private
+ * @param {number} z - Input value
+ * @returns {number} Gamma function value
+ */
+function gamma(z) {
+  const p = [
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7
+  ];
+  
+  if (z < 0.5) {
+    return Math.PI / (Math.sin(Math.PI * z) * gamma(1 - z));
+  }
+  
+  z -= 1;
+  let x = 0.99999999999980993;
+  for (let i = 0; i < p.length; i++) {
+    x += p[i] / (z + i + 1);
+  }
+  
+  const t = z + p.length - 0.5;
+  return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
 }
