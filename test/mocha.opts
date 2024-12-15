@@ -1,0 +1,5 @@
+--require chai/register-expect
+--recursive
+--extension .test.js
+--timeout 10000
+--exit 

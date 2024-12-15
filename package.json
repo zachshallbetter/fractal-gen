@@ -7,7 +7,11 @@
     "scripts": {
         "start": "node src/index.js",
         "dev": "nodemon src/server.js",
-        "test": "mocha",
+        "test": "mocha 'test/**/*.test.js' --recursive",
+        "test:unit": "mocha 'test/unit/**/*.test.js' --recursive",
+        "test:integration": "mocha 'test/integration/**/*.test.js' --recursive",
+        "test:watch": "mocha 'test/**/*.test.js' --recursive --watch",
+        "test:coverage": "c8 mocha 'test/**/*.test.js' --recursive",
         "watch": "nodemon src/server.js --watch src"
     },
     "keywords": [
@@ -39,6 +43,7 @@
     },
     "devDependencies": {
         "@types/node": "^22.7.8",
+        "c8": "^8.0.0",
         "chai": "^5.1.1",
         "mocha": "^10.7.3",
         "nodemon": "^3.1.7"
